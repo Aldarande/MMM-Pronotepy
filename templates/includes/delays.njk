@@ -1,0 +1,24 @@
+<div id="PRONOTE_DELAYS">
+    <div class="PRONOTE_TEXT_UNDERLINE">Retards</div>
+    {% set count = 0 %}
+    {% for delay in userData.delays %}
+        {% if count < config.Delays.number %}
+            <div class="PRONOTE_DETAIL">
+                <div class="PRONOTE_HOURS">
+                    Le {{ delay.formattedDate }}
+                    {% if delay.duration %} ({{ delay.duration }} min){% endif %}
+                </div>
+                <div class="PRONOTE_VALUES">
+                    {% if delay.reason %}
+                        {{ delay.reason }}
+                    {% elif delay.justified %}
+                        Retard justifié
+                    {% else %}
+                        Retard non justifié
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+        {% set count = count + 1 %}
+    {% endfor %}
+</div>

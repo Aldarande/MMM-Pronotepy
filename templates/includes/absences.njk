@@ -1,0 +1,23 @@
+<div id="PRONOTE_ABSENCES">
+    <div class="PRONOTE_TEXT_UNDERLINE">Absences</div>
+    {% set count = 0 %}
+    {% for absence in userData.absences %}
+        {% if count < config.Absences.number %}
+            <div class="PRONOTE_DETAIL">
+                <div class="PRONOTE_HOURS">
+                    Le {{ absence.formattedDate }}
+                    {% if absence.hours %} ({{ absence.hours }}){% endif %}
+                </div>
+                <div class="PRONOTE_VALUES">
+                    {% if absence.justified %}
+                        {{ absence.reason }}
+                    {% else %}
+                        Absence non justifiée
+                        {% if absence.reason %} — {{ absence.reason }}{% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+        {% set count = count + 1 %}
+    {% endfor %}
+</div>

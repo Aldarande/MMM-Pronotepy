@@ -1,0 +1,20 @@
+{
+  "name": "MMM-Pronotepy",
+  "version": "1.0.0",
+  "description": "MagicMirror² module for Pronote via pronotepy",
+  "main": "MMM-Pronotepy.js",
+  "keywords": ["magicmirror", "pronote", "pronotepy", "ecole", "school"],
+  "author": [
+    "Aldarande (portage pronotepy)",
+    "Julien \"delphiki\" Villetorte (original)",
+    "bugsounet (original)"
+  ],
+  "license": "MIT",
+  "scripts": {
+    "postinstall": "node postinstall.js",
+    "setup": "node postinstall.js",
+    "test": "node --test \"tests/*.test.js\"",
+    "test:py": "python -m pytest -q"
+  },
+  "dependencies": {}
+}

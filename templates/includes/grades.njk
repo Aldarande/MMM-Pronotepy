@@ -1,0 +1,22 @@
+<div id="PRONOTE_MARKS">
+    <div class="PRONOTE_TEXT_UNDERLINE">Dernières notes</div>
+    {% for grade in userData.grades %}
+        <div class="PRONOTE_DETAIL">
+            <div class="PRONOTE_HOURS">{{ grade.formattedDate }}</div>
+            <div class="PRONOTE_VALUES">{{ grade.subject }}</div>
+            <div class="PRONOTE_VALUES highlight">
+                {% if grade.value != null %}
+                    {{ grade.value }}/{{ grade.outOf }}
+                {% else %}
+                    Absent
+                {% endif %}
+            </div>
+            {% if grade.average != null %}
+                <div class="PRONOTE_VALUES">(moy. {{ grade.average }})</div>
+            {% endif %}
+            {% if grade.coefficient and grade.coefficient != 1 %}
+                <div class="PRONOTE_VALUES">Coeff.{{ grade.coefficient }}</div>
+            {% endif %}
+        </div>
+    {% endfor %}
+</div>

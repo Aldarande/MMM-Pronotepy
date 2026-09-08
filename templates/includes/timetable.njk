@@ -1,0 +1,27 @@
+{% for entry in timetable %}
+    <div class="PRONOTE_DISPLAY_TIMETABLE">
+        <div class="PRONOTE_HOURS {% if entry.cancelled %}cancelled{% endif %}">
+            {{ entry.start }}-{{ entry.end }}
+        </div>
+        <div class="PRONOTE_VALUES highlight {% if entry.cancelled %}cancelled{% endif %}">
+            {{ entry.subject }}
+        </div>
+        {% if config.Timetable.displayTeacher and entry.teacher | length > 0 %}
+            {% if not entry.cancelled %}
+                <div class="PRONOTE_TEACHER">Avec {{ entry.teacher }}</div>
+            {% endif %}
+        {% endif %}
+        {% if config.Timetable.displayRoom and entry.room | length > 0 %}
+            {% if not entry.cancelled %}
+                <div class="PRONOTE_ROOM">[{{ entry.room }}]</div>
+            {% endif %}
+        {% endif %}
+        {% if entry.cancelled %}
+            <div class="PRONOTE_CANCEL">(Cours annulé)</div>
+        {% elif entry.isDetention %}
+            <div class="PRONOTE_CANCEL">(Retenue)</div>
+        {% elif entry.status %}
+            <div>({{ entry.status }})</div>
+        {% endif %}
+    </div>
+{% endfor %}

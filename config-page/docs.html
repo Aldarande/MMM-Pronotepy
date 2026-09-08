@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MMM-Pronotepy — Documentation</title>
+  <style>
+    :root {
+      --bg: #1a1a2e;
+      --card: #16213e;
+      --accent: #0f3460;
+      --highlight: #e94560;
+      --text: #eee;
+      --muted: #aaa;
+      --border: #2a2a4a;
+      --success: #2ecc71;
+      --error: #e74c3c;
+      --code-bg: #0d0d1a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 20px 60px;
+    }
+
+    /* ── Barre de navigation ─────────────────────────────────────── */
+    .nav {
+      width: 100%;
+      max-width: 800px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+    }
+    .nav h1 { font-size: 1.5rem; color: var(--highlight); }
+    .nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: .88rem;
+      padding: 6px 14px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      transition: all .2s;
+    }
+    .nav a:hover { color: var(--text); border-color: var(--highlight); }
+
+    /* ── Contenu markdown ────────────────────────────────────────── */
+    #md-body {
+      width: 100%;
+      max-width: 800px;
+      line-height: 1.7;
+    }
+    #md-body h1 { display: none; } /* titre déjà dans la nav */
+    #md-body h2 {
+      font-size: 1.35rem;
+      color: var(--highlight);
+      margin: 36px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    #md-body h3 {
+      font-size: 1.05rem;
+      color: var(--text);
+      margin: 24px 0 8px;
+    }
+    #md-body h4 {
+      font-size: .95rem;
+      color: var(--muted);
+      margin: 16px 0 6px;
+    }
+    #md-body p { margin: 10px 0; color: var(--text); }
+    #md-body a { color: var(--highlight); text-decoration: none; }
+    #md-body a:hover { text-decoration: underline; }
+    #md-body strong { color: #fff; }
+    #md-body em { color: var(--muted); font-style: italic; }
+    #md-body ul, #md-body ol {
+      padding-left: 22px;
+      margin: 8px 0 12px;
+    }
+    #md-body li { margin: 4px 0; }
+    #md-body blockquote {
+      border-left: 3px solid var(--highlight);
+      padding: 8px 16px;
+      margin: 12px 0;
+      background: var(--card);
+      border-radius: 0 6px 6px 0;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+    #md-body hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 32px 0;
+    }
+    #md-body pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      overflow-x: auto;
+      margin: 12px 0;
+      position: relative;
+    }
+    #md-body code {
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: .82rem;
+      color: #7ecfff;
+    }
+    #md-body pre code { color: #c9d1d9; }
+    #md-body :not(pre) > code {
+      background: var(--accent);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #7ecfff;
+      font-size: .85em;
+    }
+    #md-body table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: .9rem;
+    }
+    #md-body th {
+      background: var(--accent);
+      color: var(--text);
+      padding: 8px 12px;
+      text-align: left;
+      border: 1px solid var(--border);
+    }
+    #md-body td {
+      padding: 7px 12px;
+      border: 1px solid var(--border);
+      background: var(--card);
+    }
+    #md-body tr:nth-child(even) td { background: var(--accent); }
+
+    /* ── Boutons copier ──────────────────────────────────────────── */
+    .copy-btn {
+      position: absolute;
+      top: 8px; right: 10px;
+      background: var(--accent);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--muted);
+      font-size: .72rem;
+      padding: 3px 8px;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .copy-btn:hover { color: var(--text); border-color: var(--highlight); }
+
+    /* ── Indicateur de chargement ────────────────────────────────── */
+    #loading {
+      color: var(--muted);
+      font-size: .9rem;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="nav">
+  <h1>📖 MMM-Pronotepy — Documentation</h1>
+  <a href="/MMM-Pronotepy/config">← Configuration</a>
+</div>
+
+<div id="loading">Chargement de la documentation…</div>
+<div id="md-body"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+<script>
+'use strict';
+
+/* ── Clé d'API ────────────────────────────────────────────────────────
+ * Même mécanique que la page de configuration : la clé arrive dans
+ * l'URL au premier chargement, se range en sessionStorage, disparaît de
+ * la barre d'adresse, puis voyage en en-tête X-Api-Key. */
+const API_KEY_STORE = 'mmm-pronotepy-api-key';
+
+const _apiKey = (() => {
+  const params  = new URLSearchParams(location.search);
+  const fromUrl = params.get('key');
+  if (fromUrl) {
+    try { sessionStorage.setItem(API_KEY_STORE, fromUrl); } catch { /* mode privé */ }
+    params.delete('key');
+    const query = params.toString();
+    history.replaceState(null, '', location.pathname + (query ? '?' + query : '') + location.hash);
+    return fromUrl;
+  }
+  try { return sessionStorage.getItem(API_KEY_STORE) || ''; } catch { return ''; }
+})();
+
+function withKey (url) {
+  if (!_apiKey) return url;
+  return url + (url.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(_apiKey);
+}
+
+function apiFetch (url, opts) {
+  const options = Object.assign({}, opts);
+  options.headers = Object.assign({}, options.headers);
+  if (_apiKey) options.headers['X-Api-Key'] = _apiKey;
+  return fetch(url, options);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('a[href^="/MMM-Pronotepy/"]').forEach(a => {
+    a.href = withKey(a.getAttribute('href'));
+  });
+});
+
+/* Génère un slug compatible GitHub (même algorithme que GitHub Flavored Markdown).
+ * Les liens du sommaire dans le README utilisent ce format. */
+function githubSlug(text) {
+  return text
+    .toLowerCase()
+    .replace(/<[^>]+>/g, '')          // supprime les balises HTML éventuelles
+    .replace(/[^\w\s\-\u00C0-\u024F]/g, '') // garde lettres (dont accents), chiffres, tirets
+    .replace(/\s+/g, '-')             // espaces → tirets
+    .replace(/-+/g, '-');             // tirets multiples → un seul
+}
+
+async function loadDocs() {
+  const loading = document.getElementById('loading');
+  const body    = document.getElementById('md-body');
+  try {
+    const res = await apiFetch('/MMM-Pronotepy/api/readme');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const md = await res.text();
+
+    /* Renderer personnalisé : génère des IDs de titres compatibles GitHub */
+    const renderer = new marked.Renderer();
+    const slugCount = {};
+    renderer.heading = function(token) {
+      const text  = token.text;
+      const level = token.depth;
+      let slug = githubSlug(text);
+      /* Dédoublonnage si le même titre apparaît plusieurs fois */
+      if (slugCount[slug] !== undefined) {
+        slugCount[slug]++;
+        slug = slug + '-' + slugCount[slug];
+      } else {
+        slugCount[slug] = 0;
+      }
+      return `<h${level} id="${slug}">${text}</h${level}>\n`;
+    };
+
+    marked.setOptions({ breaks: false, gfm: true });
+    body.innerHTML = marked.parse(md, { renderer });
+
+    /* Ajoute les boutons "Copier" sur chaque bloc de code */
+    body.querySelectorAll('pre').forEach(pre => {
+      const btn = document.createElement('button');
+      btn.className = 'copy-btn';
+      btn.textContent = '📋 Copier';
+      btn.addEventListener('click', () => {
+        const code = pre.querySelector('code')?.innerText || pre.innerText;
+        navigator.clipboard.writeText(code).then(() => {
+          btn.textContent = '✅ Copié !';
+          setTimeout(() => { btn.textContent = '📋 Copier'; }, 2000);
+        });
+      });
+      pre.style.position = 'relative';
+      pre.appendChild(btn);
+    });
+
+    loading.style.display = 'none';
+  } catch (e) {
+    loading.textContent = '❌ Impossible de charger la documentation : ' + e.message;
+  }
+}
+
+loadDocs();
+</script>
+</body>
+</html>

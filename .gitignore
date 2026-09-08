@@ -1,0 +1,12 @@
+node_modules/
+cache/tokens.json
+cache/device_uuid.txt
+GEMINI.md
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+cache/last-*.json
+cache/tokens-*.json

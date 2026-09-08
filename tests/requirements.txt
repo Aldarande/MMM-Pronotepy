@@ -1,0 +1,5 @@
+# Dépendances des tests Python. Séparées de requirements.txt (exécution du
+# pont) : la CI n'installe que ce qu'elle utilise, et surtout les tests ne
+# doivent PAS tirer pronotepy — conftest.py en fournit un double, ce qui
+# garantit qu'aucun test ne sort sur le réseau.
+pytest>=8.0,<9

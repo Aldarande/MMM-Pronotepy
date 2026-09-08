@@ -1,0 +1,30 @@
+<div id="PRONOTE_HOMEWORKS">
+    <div class="PRONOTE_TEXT_UNDERLINE">Devoirs{% if not config.Homeworks.displayDone %} à faire{% endif %}</div>
+
+    {% if userData.homeworks | length == 0 %}
+        <div>Pas de devoirs !</div>
+    {% else %}
+        {% set lastDeadline = null %}
+        {% for homework in userData.homeworks %}
+            {% if (homework.done and config.Homeworks.displayDone) or not homework.done %}
+                {% if lastDeadline != homework.deadline %}
+                    <div class="PRONOTE_HOMEWORKS_DATE">
+                        <span>pour {{ homework.deadline }}</span>
+                    </div>
+                    {% set lastDeadline = homework.deadline %}
+                {% endif %}
+                <div class="PRONOTE_DETAIL">
+                    {% if config.Homeworks.displayDone %}
+                        <div class="PRONOTE_HOMEWORKS_DONE">{% if homework.done %}✓{% endif %}</div>
+                    {% endif %}
+                    <div class="PRONOTE_HOMEWORKS_VALUES">
+                        {{ homework.subject }}
+                    </div>
+                    {% if config.Homeworks.displayDescription and homework.description %}
+                        <div class="PRONOTE_VALUES_DESCRIPTION">{{ homework.description }}</div>
+                    {% endif %}
+                </div>
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+</div>

@@ -1,0 +1,16 @@
+<div id="PRONOTE_PUNISHMENTS">
+    <div class="PRONOTE_TEXT_UNDERLINE">Punitions</div>
+    {% set count = 0 %}
+    {% for punishment in userData.punishments %}
+        {% if count < config.Punishments.number %}
+            <div class="PRONOTE_DETAIL">
+                <div class="PRONOTE_HOURS">Le {{ punishment.formattedDate }}</div>
+                <div class="PRONOTE_VALUES highlight">{{ punishment.type }}</div>
+                {% if punishment.reason %}
+                    <div class="PRONOTE_VALUES">{{ punishment.reason }}</div>
+                {% endif %}
+            </div>
+        {% endif %}
+        {% set count = count + 1 %}
+    {% endfor %}
+</div>

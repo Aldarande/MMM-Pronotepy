@@ -1,0 +1,10 @@
+# MMM-Pronotepy — dépendances Python
+#
+# pronotepy est en mode maintenance : bugfix et compatibilité PRONOTE
+# uniquement. On suit la série 2.15 pour bénéficier des correctifs de
+# compatibilité sans casse d'API.
+#
+# Le plancher est impératif : les serveurs PRONOTE 2026 ne publient plus
+# l'appel Start({...}) dans le onload du <body>, ce sur quoi pronotepy
+# <= 2.14.6 échoue avec « KeyError: 'onload' ».
+pronotepy>=2.15.7,<3

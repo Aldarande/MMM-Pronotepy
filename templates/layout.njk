@@ -1,0 +1,228 @@
+<div class="pm-wrap">
+
+  {# ── En-tête ──────────────────────────────────────────────────────── #}
+  {% if userData.name or userData.className or userData.establishment %}
+  <div class="pm-header">
+    <div class="pm-header-dot"></div>
+    {% if config.Header.displayStudentName and userData.name %}
+      <span class="pm-name">{{ userData.name | escape }}</span>
+    {% endif %}
+    {% if config.Header.displayStudentClass and userData.className %}
+      <span class="pm-class">{{ userData.className | escape }}</span>
+    {% endif %}
+    {% if config.Header.displayEstablishmentName and userData.establishment %}
+      <span class="pm-estab">{{ userData.establishment | escape }}</span>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {# ── Bandeau hors ligne ────────────────────────────────────────────
+     Affiché seulement quand les données viennent du cache. L'heure de
+     collecte est là pour qu'on sache d'un coup d'œil si ce qu'on lit
+     vaut encore — le cache ne franchit jamais minuit, donc l'emploi du
+     temps reste bien celui du jour. #}
+  {% if stale %}
+  <div class="pm-stale">
+    <span class="pm-stale-dot"></span>
+    <span class="pm-stale-text">Hors ligne · données de {{ stale.time | escape }}</span>
+  </div>
+  {% endif %}
+
+  {# ── Timeline ─────────────────────────────────────────────────────── #}
+  <div class="pm-timeline">
+
+    {# ── Aujourd'hui ─────────────────────────────────────────────── #}
+    {% if showToday %}
+
+      {% if userData.timetableToday | length > 0 %}
+      {# Journée scolaire normale #}
+      <div class="pm-section pm-section--today">
+        <div class="pm-section-head">
+          <span class="pm-section-label pm-section-label--today">Aujourd'hui</span>
+          {% if userData.todayStart %}
+            <span class="pm-section-hours">{{ userData.todayStart | escape }}–{{ userData.todayEnd | escape }}</span>
+          {% endif %}
+        </div>
+
+        {% for entry in userData.timetableToday %}
+          {% if loop.index0 == lunchIdxToday %}
+            <div class="pm-repas">· repas ·</div>
+          {% endif %}
+
+          <div class="pm-lesson{% if entry.cancelled %} pm-lesson--cancelled{% elif entry.isDetention %} pm-lesson--detention{% endif %}">
+            <span class="pm-lesson-time">{{ entry.start | escape }}</span>
+            <span class="pm-lesson-subject">{{ entry.subject | escape }}</span>
+            {% if entry.cancelled %}
+              <span class="pm-lesson-badge">ANN</span>
+            {% elif entry.isDetention %}
+              <span class="pm-lesson-badge">RET</span>
+            {% else %}
+              {% if config.Timetable.displayRoom and entry.room %}
+                <span class="pm-lesson-meta">{{ entry.room | escape }}</span>
+              {% elif config.Timetable.displayTeacher and entry.teacher %}
+                <span class="pm-lesson-meta">{{ entry.teacher | escape }}</span>
+              {% endif %}
+            {% endif %}
+          </div>
+        {% endfor %}
+        {% if lastLessonEndToday %}
+          <div class="pm-fin">fin des cours · <strong>{{ lastLessonEndToday | escape }}</strong></div>
+        {% endif %}
+      </div>
+
+      {% elif config.Timetable.showHolidays %}
+      {# Pas de cours aujourd'hui + showHolidays activé → bloc vacances #}
+      <div class="pm-section pm-section--holiday">
+        <div class="pm-section-head">
+          <span class="pm-section-label pm-section-label--holiday">Vacances</span>
+        </div>
+        {% if userData.timetableNextDay.day %}
+          <div class="pm-holiday-resume">
+            Reprise le <strong>{{ userData.timetableNextDay.day | escape }}</strong>
+          </div>
+          {% if userData.timetableNextDay.daysUntil == 1 %}
+            <div class="pm-holiday-countdown">demain</div>
+          {% elif userData.timetableNextDay.daysUntil > 1 %}
+            <div class="pm-holiday-countdown">dans {{ userData.timetableNextDay.daysUntil }} jours</div>
+          {% endif %}
+        {% else %}
+          <div class="pm-holiday-resume">Aucun cours à venir trouvé</div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+    {% endif %}
+
+    {# ── Prochain jour scolaire ──────────────────────────────────── #}
+    {% if showNextDay %}
+    <div class="pm-section">
+      <div class="pm-section-head">
+        <span class="pm-section-label">{{ userData.timetableNextDay.day | escape or "Demain" }}</span>
+        {% if userData.timetableNextDay.start %}
+          <span class="pm-section-hours">{{ userData.timetableNextDay.start | escape }}–{{ userData.timetableNextDay.end | escape }}</span>
+        {% endif %}
+      </div>
+
+      {% if userData.timetableNextDay.classes | length == 0 %}
+        <div class="pm-empty">Pas de cours</div>
+      {% else %}
+        {% for entry in userData.timetableNextDay.classes %}
+          {% if loop.index0 == lunchIdxNext %}
+            <div class="pm-repas">· repas ·</div>
+          {% endif %}
+
+          <div class="pm-lesson{% if entry.cancelled %} pm-lesson--cancelled{% elif entry.isDetention %} pm-lesson--detention{% endif %}">
+            <span class="pm-lesson-time">{{ entry.start | escape }}</span>
+            <span class="pm-lesson-subject">{{ entry.subject | escape }}</span>
+            {% if entry.cancelled %}
+              <span class="pm-lesson-badge">ANN</span>
+            {% elif entry.isDetention %}
+              <span class="pm-lesson-badge">RET</span>
+            {% else %}
+              {% if config.Timetable.displayRoom and entry.room %}
+                <span class="pm-lesson-meta">{{ entry.room | escape }}</span>
+              {% elif config.Timetable.displayTeacher and entry.teacher %}
+                <span class="pm-lesson-meta">{{ entry.teacher | escape }}</span>
+              {% endif %}
+            {% endif %}
+          </div>
+        {% endfor %}
+        {% if lastLessonEndNext %}
+          <div class="pm-fin">fin des cours · <strong>{{ lastLessonEndNext | escape }}</strong></div>
+        {% endif %}
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {# ── Devoirs ─────────────────────────────────────────────────── #}
+    {% if showHomeworks and (not userData.noClassesToday or config.Homeworks.showHolidays) %}
+      {% if pendingCount > 0 or (config.Homeworks.displayDone and userData.homeworks | length > 0) %}
+      <div class="pm-section">
+        <div class="pm-section-head">
+          <span class="pm-section-label">Devoirs</span>
+          {% if pendingCount > 0 %}
+            <span class="pm-section-count">{{ pendingCount }} à faire</span>
+          {% endif %}
+        </div>
+
+        {# 1 ligne par échéance : date | mat. · mat. ×3 · mat. #}
+        {% for row in hwRows %}
+          <div class="pm-hw-row">
+            <span class="pm-hw-date{% if row.dueTomorrow %} pm-hw-date--urgent{% endif %}">{% if row.dueTomorrow %}⚠ Demain{% else %}{{ row.deadline | escape }}{% endif %}</span>
+            <span class="pm-hw-subjects">{{ row.subjectsText | escape }}</span>
+          </div>
+        {% endfor %}
+
+        {% if config.Homeworks.displayDone %}
+          {% set shownDeadline = "" %}
+          {% for hw in userData.homeworks %}
+            {% if hw.done %}
+              {% if shownDeadline != hw.deadline %}
+                <div class="pm-deadline">{{ hw.deadline | escape }}</div>
+                {% set shownDeadline = hw.deadline %}
+              {% endif %}
+              <div class="pm-hw pm-hw--done">
+                <span class="pm-hw-tick">✓</span>
+                <div class="pm-hw-body">
+                  <div class="pm-hw-subject">{{ hw.subject | escape }}</div>
+                </div>
+              </div>
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+      </div>
+      {% endif %}
+    {% endif %}
+
+    {# ── Alertes : absences / retards / punitions ────────────────── #}
+    {# Alertes : masquées pendant les vacances si showHolidays désactivé #}
+    {% set showAbs = config.Absences.display    and (not userData.noClassesToday or config.Absences.showHolidays) %}
+    {% set showDel = config.Delays.display      and (not userData.noClassesToday or config.Delays.showHolidays) %}
+    {% set showPun = config.Punishments.display and (not userData.noClassesToday or config.Punishments.showHolidays) %}
+
+    {% set absCount = userData.absences    | length if showAbs else 0 %}
+    {% set delCount = userData.delays      | length if showDel else 0 %}
+    {% set punCount = userData.punishments | length if showPun else 0 %}
+
+    {% if absCount > 0 or delCount > 0 or punCount > 0 %}
+    <div class="pm-section">
+      <div class="pm-alerts">
+        {% if absCount > 0 %}
+          <span class="pm-badge pm-badge--abs">{{ absCount }} absence{% if absCount > 1 %}s{% endif %}</span>
+        {% endif %}
+        {% if delCount > 0 %}
+          <span class="pm-badge pm-badge--delay">{{ delCount }} retard{% if delCount > 1 %}s{% endif %}</span>
+        {% endif %}
+        {% if punCount > 0 %}
+          <span class="pm-badge pm-badge--pun">{{ punCount }} punition{% if punCount > 1 %}s{% endif %}</span>
+        {% endif %}
+      </div>
+
+      {% if showAbs %}{% for a in userData.absences %}
+      <div class="pm-alert-row">
+        <span class="pm-alert-date">{{ a.formattedDate | escape }}</span>
+        <span class="pm-alert-info{% if not a.justified %} pm-alert-info--nonjust{% endif %}">
+          Absence{% if not a.justified %} · Non justifiée{% endif %}{% if a.reason %} · {{ a.reason | escape }}{% endif %}
+        </span>
+      </div>
+      {% endfor %}{% endif %}
+
+      {% if showDel %}{% for d in userData.delays %}
+      <div class="pm-alert-row">
+        <span class="pm-alert-date">{{ d.formattedDate | escape }}</span>
+        <span class="pm-alert-info">Retard {{ d.duration | escape }} min{% if d.reason %} · {{ d.reason | escape }}{% endif %}</span>
+      </div>
+      {% endfor %}{% endif %}
+
+      {% if showPun %}{% for p in userData.punishments %}
+      <div class="pm-alert-row">
+        <span class="pm-alert-date">{{ p.formattedDate | escape }}</span>
+        <span class="pm-alert-info">{{ p.type | escape }}{% if p.reason %} · {{ p.reason | escape }}{% endif %}</span>
+      </div>
+      {% endfor %}{% endif %}
+    </div>
+    {% endif %}
+
+  </div>{# /pm-timeline #}
+
+</div>

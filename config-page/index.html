@@ -1,0 +1,1637 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MMM-Pronotepy — Configuration</title>
+  <style>
+    :root {
+      --bg:        #1a1a2e;
+      --card:      #16213e;
+      --accent:    #0f3460;
+      --highlight: #e94560;
+      --text:      #eee;
+      --muted:     #aaa;
+      --border:    #2a2a4a;
+      --success:   #2ecc71;
+      --error:     #e74c3c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    h1 { font-size: 1.6rem; margin-bottom: 6px; color: var(--highlight); }
+    .subtitle { color: var(--muted); margin-bottom: 20px; font-size: .9rem; }
+
+    /* ── Outer wrapper ───────────────────────────────────────────────── */
+    .page-wrap {
+      width: 100%;
+      max-width: 580px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    /* ── Cards ───────────────────────────────────────────────────────── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 22px;
+      margin-bottom: 16px;
+    }
+    .card h2 {
+      font-size: 1.05rem;
+      margin-bottom: 14px;
+      color: var(--highlight);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: 4px; margin-top: 12px; }
+    input[type="url"], input[type="text"], input[type="password"],
+    input[type="number"], select, textarea {
+      width: 100%;
+      background: var(--accent);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 9px 12px;
+      font-size: .95rem;
+    }
+    input:focus, select:focus, textarea:focus { outline: 2px solid var(--highlight); }
+    textarea { resize: vertical; min-height: 80px; font-family: monospace; font-size: .8rem; }
+    button {
+      margin-top: 14px;
+      width: 100%;
+      padding: 11px;
+      background: var(--highlight);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      transition: opacity .2s;
+    }
+    button:hover { opacity: .85; }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-secondary { background: var(--accent); margin-top: 8px; }
+
+    /* ── Status boxes ────────────────────────────────────────────────── */
+    .status-box { border-radius: 8px; padding: 12px 16px; font-size: .88rem; margin-top: 14px; }
+    .status-ok   { background: #1a3a2a; border: 1px solid var(--success); color: var(--success); }
+    .status-err  { background: #3a1a1a; border: 1px solid var(--error);   color: var(--error); }
+    .status-info { background: var(--accent); border: 1px solid var(--border); color: var(--muted); }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: .75rem; font-weight: 700; margin-left: 6px; }
+    .badge-ok { background: var(--success); color: #000; }
+    .badge-no { background: var(--error);   color: #fff; }
+
+    /* ── Spinner ─────────────────────────────────────────────────────── */
+    .spinner {
+      display: inline-block; width: 18px; height: 18px;
+      border: 3px solid #fff3; border-top-color: #fff;
+      border-radius: 50%; animation: spin .6s linear infinite;
+      vertical-align: middle; margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── MAIN TABS ───────────────────────────────────────────────────── */
+    .main-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 18px;
+    }
+    .main-tab {
+      flex: 1;
+      padding: 10px 8px;
+      text-align: center;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: .88rem;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--muted);
+      transition: all .2s;
+      white-space: nowrap;
+    }
+    .main-tab.active {
+      background: var(--highlight);
+      color: #fff;
+      border-color: var(--highlight);
+    }
+    .main-tab:hover:not(.active) {
+      border-color: var(--highlight);
+      color: var(--text);
+    }
+    .main-pane { display: none; }
+    .main-pane.active { display: block; }
+
+    /* ── Auth sub-tabs ───────────────────────────────────────────────── */
+    .tab-bar { display: flex; gap: 8px; margin-bottom: 14px; }
+    .tab {
+      flex: 1; padding: 8px; text-align: center;
+      border-radius: 6px; cursor: pointer; font-size: .9rem;
+      border: 1px solid var(--border); background: var(--accent); color: var(--muted);
+      transition: all .2s;
+    }
+    .tab.active { background: var(--highlight); color: #fff; border-color: var(--highlight); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── QR Drop zone ────────────────────────────────────────────────── */
+    #qr-drop-zone {
+      border: 2px dashed var(--border); border-radius: 10px;
+      padding: 28px 20px; text-align: center; cursor: pointer;
+      transition: border-color .2s, background .2s; margin-top: 12px; position: relative;
+    }
+    #qr-drop-zone:hover, #qr-drop-zone.drag-over {
+      border-color: var(--highlight); background: rgba(233,69,96,.06);
+    }
+    #qr-drop-zone.decoded { border-color: var(--success); background: rgba(46,204,113,.06); }
+    #qr-drop-icon { color: var(--muted); margin-bottom: 12px; transition: color .2s; }
+    #qr-drop-zone:hover #qr-drop-icon,
+    #qr-drop-zone.drag-over #qr-drop-icon { color: var(--highlight); }
+    #qr-drop-zone.decoded #qr-drop-icon { color: var(--success); }
+    #qr-drop-text { font-size: .88rem; color: var(--muted); line-height: 1.5; }
+    .child-chip {
+      display: inline-block; padding: 5px 12px; margin: 4px;
+      border-radius: 999px; border: 1px solid var(--border);
+      cursor: pointer; font-size: .85rem; background: var(--accent); transition: all .2s;
+    }
+    .child-chip.selected { background: var(--highlight); color: #fff; border-color: var(--highlight); }
+    #video-wrap { position: relative; margin-top: 12px; border-radius: 8px; overflow: hidden; }
+    #qr-video { width: 100%; max-height: 280px; object-fit: cover; display: block; }
+    #qr-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+    #qr-overlay svg { opacity: .35; }
+
+    /* ── PIN modal ───────────────────────────────────────────────────── */
+    #pin-modal {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.75); z-index: 100;
+      align-items: center; justify-content: center;
+    }
+    #pin-modal.open { display: flex; }
+    #pin-modal-box {
+      background: var(--card); border: 1px solid var(--highlight);
+      border-radius: 14px; padding: 30px 26px; width: 100%;
+      max-width: 340px; text-align: center; box-shadow: 0 8px 40px rgba(0,0,0,.6);
+    }
+    #pin-modal-box h3 { font-size: 1.2rem; color: var(--highlight); margin-bottom: 8px; }
+    #pin-modal-box p  { font-size: .85rem; color: var(--muted); margin-bottom: 18px; }
+    #pin-input {
+      font-size: 2rem; letter-spacing: .5em; text-align: center;
+      width: 100%; padding: 10px; background: var(--accent);
+      border: 1px solid var(--border); border-radius: 8px; color: var(--text);
+    }
+    #pin-input:focus { outline: 2px solid var(--highlight); }
+    #pin-error { color: var(--error); font-size: .85rem; margin-top: 8px; min-height: 1.2em; }
+    #pin-modal-actions { display: flex; gap: 10px; margin-top: 14px; }
+    #pin-modal-actions button { margin-top: 0; }
+    #btn-pin-cancel { background: var(--accent); }
+
+    /* ── LOG TAB ─────────────────────────────────────────────────────── */
+    .log-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .log-filter-btn {
+      padding: 3px 10px; border-radius: 999px; font-size: .76rem; font-weight: 600;
+      border: 1px solid var(--border); background: var(--accent); color: var(--muted);
+      cursor: pointer; transition: all .15s;
+    }
+    .log-filter-btn.active {
+      border-color: var(--highlight); color: var(--text);
+      background: rgba(233,69,96,.18);
+    }
+    .log-auto-badge {
+      margin-left: auto; display: flex; align-items: center; gap: 6px;
+      font-size: .78rem; color: var(--muted);
+    }
+    .log-output {
+      background: #0d0d1a; border: 1px solid var(--border); border-radius: 6px;
+      padding: 10px 12px; font-family: monospace; font-size: .76rem;
+      height: 340px; overflow-y: auto;
+    }
+    .log-line { display: flex; gap: 5px; margin-bottom: 2px; align-items: baseline; min-width: 0; }
+    .log-ts   { color: #454565; flex-shrink: 0; }
+    .log-src  { font-size: .65rem; font-weight: 700; letter-spacing: .04em;
+                border-radius: 3px; padding: 0 4px; flex-shrink: 0; line-height: 1.6; }
+    .log-src--server { background: rgba(52,152,219,.25); color: #7ec8ff; }
+    .log-src--client { background: rgba(46,204,113,.18); color: #7affb0; }
+    .log-info  { color: #7ecfff; word-break: break-all; }
+    .log-ok    { color: var(--success); word-break: break-all; }
+    .log-warn  { color: #f0a500; word-break: break-all; }
+    .log-error { color: var(--error); word-break: break-all; }
+    .log-log   { color: #888; word-break: break-all; }
+    .log-actions { display: flex; gap: 8px; margin-top: 8px; }
+    .log-actions button { margin-top: 0; flex: 1; font-size: .8rem; padding: 7px; }
+
+    /* ── CONFIG EDITOR ───────────────────────────────────────────────── */
+    .cfg-identity { margin-bottom: 18px; }
+    .cfg-identity label {
+      font-size: .8rem; color: var(--muted); margin-bottom: 4px; margin-top: 10px;
+    }
+    .cfg-identity select,
+    .cfg-identity input[type="text"] {
+      padding: 7px 10px; font-size: .9rem;
+    }
+    .cfg-section {
+      margin-bottom: 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .cfg-section-head {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 12px;
+      background: rgba(15,52,96,.5);
+      cursor: pointer;
+      user-select: none;
+    }
+    .cfg-section-head:hover { background: rgba(15,52,96,.8); }
+    .cfg-section-title {
+      font-size: .88rem; font-weight: 700; color: var(--text); flex: 1;
+    }
+    .cfg-section-key {
+      font-size: .73rem; color: var(--muted); font-family: monospace;
+      background: var(--accent); padding: 1px 7px; border-radius: 3px;
+    }
+    .cfg-section-arrow {
+      font-size: .8rem; color: var(--muted); transition: transform .2s;
+    }
+    .cfg-section.collapsed .cfg-section-arrow { transform: rotate(-90deg); }
+    .cfg-body { padding: 0 12px 8px; }
+    .cfg-section.collapsed .cfg-body { display: none; }
+    .cfg-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(42,42,74,.6);
+    }
+    .cfg-row:last-child { border-bottom: none; }
+    .cfg-key {
+      font-family: monospace; font-size: .8rem; color: #9ecfff;
+      min-width: 152px; flex-shrink: 0;
+    }
+    .cfg-ctrl { flex: 1; }
+    .cfg-ctrl input[type="number"],
+    .cfg-ctrl input[type="text"] {
+      width: 100%; max-width: 120px;
+      padding: 4px 8px; font-size: .85rem;
+      background: var(--accent); border: 1px solid var(--border);
+      color: var(--text); border-radius: 4px; margin: 0;
+    }
+    .cfg-ctrl input:focus { outline: 2px solid var(--highlight); }
+    .cfg-def {
+      font-size: .72rem; color: #555; white-space: nowrap; flex-shrink: 0;
+      font-family: monospace;
+    }
+
+    /* ── Toggle switch ───────────────────────────────────────────────── */
+    .sw {
+      position: relative; display: inline-flex;
+      width: 36px; height: 20px; flex-shrink: 0; cursor: pointer;
+    }
+    .sw input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .sw-track {
+      position: absolute; inset: 0;
+      background: #222240;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      transition: background .2s, border-color .2s;
+    }
+    .sw-track::after {
+      content: ''; position: absolute;
+      width: 14px; height: 14px; left: 2px; top: 2px;
+      background: var(--muted);
+      border-radius: 50%;
+      transition: transform .2s, background .2s;
+    }
+    .sw input:checked + .sw-track {
+      background: rgba(233,69,96,.3);
+      border-color: var(--highlight);
+    }
+    .sw input:checked + .sw-track::after {
+      transform: translateX(16px);
+      background: var(--highlight);
+    }
+
+    /* ── Sous-en-têtes de groupe dans une section ────────────────────── */
+    .cfg-subhead {
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .10em;
+      text-transform: uppercase;
+      color: var(--highlight);
+      padding: 8px 0 4px;
+      border-top: 1px solid rgba(233,69,96,.18);
+      margin-top: 4px;
+    }
+    .cfg-subhead:first-of-type { border-top: 1px solid var(--border); }
+    .cfg-row--sub .cfg-key { color: #b0d8ff; padding-left: 10px; }
+    .cfg-row--sub { background: rgba(15,52,96,.25); border-radius: 4px; padding-left: 4px; }
+
+    /* ── Config output ───────────────────────────────────────────────── */
+    #cfg-output-wrap { margin-top: 16px; display: none; }
+    #cfg-output {
+      width: 100%; background: #0d0d1a; border: 1px solid var(--border);
+      border-radius: 6px; padding: 12px; font-family: monospace;
+      font-size: .76rem; color: #c3e0ff; min-height: 140px;
+      resize: vertical; line-height: 1.5;
+    }
+    .cfg-output-actions { display: flex; gap: 8px; margin-top: 8px; }
+    .cfg-output-actions button { margin-top: 0; flex: 1; font-size: .82rem; padding: 8px; }
+    /* ── Sélecteur de compte ──────────────────────────────────── */
+    .account-bar {
+      display: flex; align-items: center; gap: 8px;
+      flex-wrap: wrap; margin-bottom: 6px;
+    }
+    .account-bar label { font-size: .82rem; color: var(--muted); }
+    .account-bar select, .account-bar input {
+      background: var(--accent); color: var(--text);
+      border: 1px solid var(--border); border-radius: 6px;
+      padding: 6px 10px; font-size: .88rem; min-width: 12rem;
+    }
+    .account-bar button { padding: 6px 12px; font-size: .82rem; }
+    .account-hint {
+      font-size: .76rem; color: var(--muted);
+      margin: 0 0 12px; line-height: 1.5;
+    }
+    .account-hint code {
+      background: var(--accent); padding: 1px 5px; border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-wrap">
+
+  <!-- ── Top bar ──────────────────────────────────────────────────── -->
+  <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+    <a href="/MMM-Pronotepy/docs" target="_blank"
+       style="color:var(--muted);text-decoration:none;font-size:.85rem;padding:5px 12px;border:1px solid var(--border);border-radius:6px;transition:all .2s"
+       onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--highlight)'"
+       onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">
+      📖 Documentation
+    </a>
+  </div>
+
+  <h1>⚙ MMM-Pronotepy</h1>
+  <p class="subtitle">Configuration de la connexion à Pronote</p>
+
+  <!-- ── Bannière relance ─────────────────────────────────────────── -->
+  <div id="restart-notice" style="display:none;margin-bottom:16px;background:#1a2e1a;border:2px solid var(--success);border-radius:12px;padding:18px 20px;color:var(--success)">
+    <div style="font-size:1.05rem;font-weight:700;margin-bottom:8px">✅ Configuration enregistrée !</div>
+    <div style="color:var(--text);font-size:.9rem;line-height:1.6">
+      Pour que les changements soient pris en compte, <strong style="color:var(--success)">relancez MagicMirror</strong>.<br>
+      <span style="color:var(--muted);font-size:.82rem">docker restart magicmirror</span>
+    </div>
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid #2a4a2a;font-size:.85rem;color:var(--muted)">
+      Pour reconfigurer le module :<br>
+      <a id="restart-config-url" href="#" target="_blank"
+         style="color:var(--highlight);text-decoration:none;font-family:monospace;font-size:.88rem;word-break:break-all"></a>
+    </div>
+  </div>
+
+  <!-- ── Onglets principaux ───────────────────────────────────────── -->
+  <div class="main-tabs">
+    <div class="main-tab active" data-pane="auth">🔑 Authentification</div>
+    <div class="main-tab"        data-pane="logs">📋 Logs</div>
+    <div class="main-tab"        data-pane="config">⚙ Configuration</div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       ONGLET 1 — AUTHENTIFICATION
+       ════════════════════════════════════════════════════════════════ -->
+  <div class="main-pane active" id="pane-auth">
+
+    <!-- Statut actuel -->
+    <div class="card" id="status-card">
+      <h2>📋 Statut actuel</h2>
+
+      <div class="account-bar">
+        <label for="account-select">Compte&nbsp;Pronote</label>
+        <select id="account-select" title="Chaque compte a son propre jeu de jetons"></select>
+        <input id="account-new" type="text" placeholder="nom du nouveau compte"
+               maxlength="48" autocomplete="off" style="display:none">
+        <button type="button" class="btn-secondary" id="btn-account-add">+ Nouveau</button>
+      </div>
+      <p class="account-hint">
+        Un compte = un jeu de jetons. Utilisez-en un par compte Pronote distinct
+        (autre établissement, compte élève…). Les enfants d'un même compte parent
+        se choisissent avec <code>childName</code>, pas ici.
+      </p>
+
+      <div id="status-content" class="status-box status-info">Chargement…</div>
+      <button class="btn-secondary" id="btn-clear" style="display:none">🗑 Supprimer les tokens</button>
+    </div>
+
+    <!-- Nouvelle authentification -->
+    <div class="card">
+      <h2>🔑 Nouvelle authentification</h2>
+
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px">
+        La connexion se fait uniquement par QR Code, pour un compte élève ou parent.
+        Votre mot de passe Pronote n'est jamais demandé ni stocké.
+      </p>
+
+      <div class="tab-content active" id="tab-qr">
+        <p style="font-size:.85rem;color:var(--muted);margin-bottom:10px">
+          Scannez le QR Code depuis l'app Pronote (Mon profil → Connexion par QR Code)
+          ou collez son contenu JSON ci-dessous.
+        </p>
+        <div class="tab-bar" style="margin-top:8px">
+          <div class="tab active" data-sub="paste">📋 Coller JSON</div>
+          <div class="tab"        data-sub="image">🖼 Image</div>
+          <div class="tab"        data-sub="scan">📷 Scanner</div>
+        </div>
+
+        <!-- Sous-onglet : JSON -->
+        <div class="tab-content active" id="sub-paste">
+          <label>Contenu JSON du QR Code</label>
+          <textarea id="qr-json" placeholder='{"jeton":"...","login":"...","url":"..."}'></textarea>
+          <div id="paste-status" style="display:none" class="status-box"></div>
+        </div>
+
+        <!-- Sous-onglet : image -->
+        <div class="tab-content" id="sub-image">
+          <div id="qr-drop-zone">
+            <input type="file" id="qr-file-input" accept="image/*" style="display:none" />
+            <div id="qr-drop-inner">
+              <svg id="qr-drop-icon" width="76" height="76" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="6" y="6" width="26" height="26" rx="3" stroke="currentColor" stroke-width="3.5" fill="none"/>
+                <rect x="13" y="13" width="12" height="12" rx="1" fill="currentColor"/>
+                <rect x="48" y="6" width="26" height="26" rx="3" stroke="currentColor" stroke-width="3.5" fill="none"/>
+                <rect x="55" y="13" width="12" height="12" rx="1" fill="currentColor"/>
+                <rect x="6" y="48" width="26" height="26" rx="3" stroke="currentColor" stroke-width="3.5" fill="none"/>
+                <rect x="13" y="55" width="12" height="12" rx="1" fill="currentColor"/>
+                <rect x="48" y="48" width="5" height="5" fill="currentColor"/>
+                <rect x="56" y="48" width="5" height="5" fill="currentColor"/>
+                <rect x="64" y="48" width="5" height="5" fill="currentColor"/>
+                <rect x="48" y="56" width="5" height="5" fill="currentColor"/>
+                <rect x="64" y="56" width="5" height="5" fill="currentColor"/>
+                <rect x="48" y="64" width="5" height="5" fill="currentColor"/>
+                <rect x="56" y="64" width="5" height="5" fill="currentColor"/>
+                <rect x="64" y="64" width="5" height="5" fill="currentColor"/>
+                <rect x="56" y="56" width="5" height="5" fill="currentColor"/>
+                <rect x="38" y="6"  width="5" height="5" fill="currentColor"/>
+                <rect x="38" y="14" width="5" height="5" fill="currentColor"/>
+                <rect x="38" y="22" width="5" height="5" fill="currentColor"/>
+                <rect x="6"  y="38" width="5" height="5" fill="currentColor"/>
+                <rect x="14" y="38" width="5" height="5" fill="currentColor"/>
+                <rect x="22" y="38" width="5" height="5" fill="currentColor"/>
+                <rect x="38" y="38" width="5" height="5" fill="currentColor"/>
+              </svg>
+              <div id="qr-drop-text">Glissez, collez ou selectionnez une image<br>du QR Code de Pronote</div>
+            </div>
+            <canvas id="qr-decode-canvas" style="display:none"></canvas>
+          </div>
+          <button id="btn-paste-image" class="btn-secondary" style="margin-top:10px">📋 Coller une image (Ctrl+V)</button>
+          <div id="image-status" style="display:none" class="status-box"></div>
+        </div>
+
+        <!-- Sous-onglet : caméra -->
+        <div class="tab-content" id="sub-scan">
+          <div id="video-wrap">
+            <video id="qr-video" autoplay playsinline muted></video>
+            <div id="qr-overlay">
+              <svg width="200" height="200" viewBox="0 0 200 200" fill="none" stroke="white" stroke-width="4">
+                <path d="M40 10 L10 10 L10 40"/><path d="M160 10 L190 10 L190 40"/>
+                <path d="M10 160 L10 190 L40 190"/><path d="M190 160 L190 190 L160 190"/>
+              </svg>
+            </div>
+          </div>
+          <div id="scan-status" class="status-box status-info" style="margin-top:10px">🔍 Pointez la camera vers le QR Code…</div>
+          <button id="btn-stop-scan" class="btn-secondary" style="display:none">⏹ Arreter la camera</button>
+        </div>
+
+        <div id="qr-result" style="display:none" class="status-box"></div>
+      </div>
+
+    </div>
+
+  </div><!-- /pane-auth -->
+
+  <!-- ════════════════════════════════════════════════════════════════
+       ONGLET 2 — LOGS
+       ════════════════════════════════════════════════════════════════ -->
+  <div class="main-pane" id="pane-logs">
+    <div class="card">
+      <h2>📋 Logs du module</h2>
+
+      <div class="log-toolbar">
+        <button class="log-filter-btn active" data-filter="all">Tous</button>
+        <button class="log-filter-btn" data-filter="info">Info</button>
+        <button class="log-filter-btn" data-filter="warn">Warn</button>
+        <button class="log-filter-btn" data-filter="error">Error</button>
+        <span class="log-auto-badge">
+          <span id="log-auto-dot" style="width:8px;height:8px;border-radius:50%;background:#555;display:inline-block"></span>
+          <span id="log-auto-label">auto-refresh</span>
+        </span>
+      </div>
+
+      <div class="log-output" id="main-log-output"></div>
+
+      <div class="log-actions">
+        <button class="btn-secondary" id="btn-log-clear">🗑 Effacer</button>
+        <button class="btn-secondary" id="btn-log-copy">📋 Copier</button>
+        <button class="btn-secondary" id="btn-log-download">⬇ Exporter</button>
+      </div>
+    </div>
+  </div><!-- /pane-logs -->
+
+  <!-- ════════════════════════════════════════════════════════════════
+       ONGLET 3 — CONFIGURATION
+       ════════════════════════════════════════════════════════════════ -->
+  <div class="main-pane" id="pane-config">
+    <div class="card">
+      <h2>⚙ Generateur de configuration</h2>
+      <p style="font-size:.82rem;color:var(--muted);margin-bottom:16px;line-height:1.5">
+        Configurez les options ci-dessous, puis cliquez sur <strong style="color:var(--text)">Generer</strong>
+        pour obtenir le bloc a coller dans votre <code style="color:var(--highlight);font-size:.8rem">config.js</code>.
+      </p>
+
+      <!-- Identite generale -->
+      <div class="cfg-identity">
+        <label>Enfant (compte parent)</label>
+        <select id="cfg-childName">
+          <option value="">-- selectionner --</option>
+        </select>
+        <label>Position du module</label>
+        <select id="cfg-position">
+          <option value="top_left">top_left</option>
+          <option value="top_center">top_center</option>
+          <option value="top_right">top_right</option>
+          <option value="upper_third">upper_third</option>
+          <option value="middle_center">middle_center</option>
+          <option value="lower_third">lower_third</option>
+          <option value="bottom_left">bottom_left</option>
+          <option value="bottom_center">bottom_center</option>
+          <option value="bottom_right" selected>bottom_right</option>
+          <option value="fullscreen_above">fullscreen_above</option>
+          <option value="fullscreen_below">fullscreen_below</option>
+        </select>
+        <label>Intervalle de mise a jour</label>
+        <input type="text" id="cfg-interval" value="15m" placeholder="ex: 15m ou 1h" />
+      </div>
+
+      <!-- En-tete -->
+      <div class="cfg-section" id="cs-header">
+        <div class="cfg-section-head" onclick="toggleSection('cs-header')">
+          <span class="cfg-section-title">En-tete</span>
+          <span class="cfg-section-key">Header</span>
+          <span class="cfg-section-arrow">▾</span>
+        </div>
+        <div class="cfg-body">
+          <div class="cfg-row">
+            <span class="cfg-key">displayEstablishmentName</span>
+            <span class="cfg-ctrl"><label class="sw"><input type="checkbox" id="cfg-hdr-estab" checked><span class="sw-track"></span></label></span>
+            <span class="cfg-def">true</span>
+          </div>
+          <div class="cfg-row">
+            <span class="cfg-key">displayStudentName</span>
+            <span class="cfg-ctrl"><label class="sw"><input type="checkbox" id="cfg-hdr-name" checked><span class="sw-track"></span></label></span>
+            <span class="cfg-def">true</span>
+          </div>
+          <div class="cfg-row">
+            <span class="cfg-key">displayStudentClass</span>
+            <span class="cfg-ctrl"><label class="sw"><input type="checkbox" id="cfg-hdr-class" checked><span class="sw-track"></span></label></span>
+            <span class="cfg-def">true</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Emploi du temps -->
+      <div class="cfg-section" id="cs-tt">
+        <div class="cfg-section-head" onclick="toggleSection('cs-tt')">
+          <span class="cfg-section-title">Emploi du temps</span>
+          <span class="cfg-section-key">Timetable</span>
+          <span class="cfg-section-arrow">▾</span>
+        </div>
+        <div class="cfg-body">
+
+          <!-- Activation globale + plage horaire -->
+          <div class="cfg-row"><span class="cfg-key">display</span><span class="cfg-ctrl"><label class="sw"><input type="checkbox" id="cfg-tt-display" checked><span class="sw-track"></span></label></span><span class="cfg-def">true</span></div>
+          <div class="cfg-row"><span class="cfg-key">showFrom</span><span class="cfg-ctrl"><input type="text" id="cfg-tt-from" value="00:00" maxlength="5" style="max-width:80px"></span><span class="cfg-def">"00:00"</span></div>
+          <div class="cfg-row"><span class="cfg-key">showUntil</span><span class="cfg-ctrl"><input type="text" id="cfg-tt-until" value="23:59" maxlength="5" style="max-width:80px"></span><span class="cfg-def">"23:59"</span></div>
+
+          <!-- Sous-groupe : Aujourd'hui -->
+          <div class="cfg-subhead">📅 Aujourd'hui</div>
+          <div class="cfg-row cfg-row--sub"><span class="cfg-key">displayToday</span><span class="cfg-ctrl"><label class="sw"><input type="checkbox" id="cfg-tt-today" checked><span class="sw-track"></span></label></span><span class="cfg-def">true</span></div>
+          <div class="cfg-row cfg-row--sub"><span class="cfg-key">showHolidays</span><span class="cfg-ctrl"><label class="sw"><input type="checkbox" id="cfg-tt-holidays"><span class="sw-track"></span></label></span><span class="cfg-def">false</span></div>
+          <div class="cfg-row cfg-row--sub"><span class="cfg-key">showOnlyFuture</span><span class="cfg-ctrl"><label class="sw"><input type="checkbox" id="cfg-tt-future"><span class="sw-track"></span></label></span><span class="cfg-def">false</span></div>
+          <div class="cfg-row cfg-row--sub"><span class="cfg-key">displayTeacher</span><span class="cfg-ctrl"><label class="sw"><input type="checkbox" id="cfg-tt-teacher" checked><span class="sw-track"></span></label></span><span class="cfg-def">true</span></div>
+          <div class="cfg-row cfg-row--sub"><span class="cfg-key">displayRoom</span><span class="cfg-ctrl"><label class="sw"><input type="checkbox" id="cfg-tt-room" checked><span class="sw-track"></span></label></span><span class="cfg-def">true</span></div>
+
+          <!-- Sous-groupe : Prochain jour -->
+          <div class="cfg-subhead">📆 Prochain jour</div>
+          <div class="cfg-row cfg-row--sub"><span class="cfg-key">displayNextDay</span><span class="cfg-ctrl"><label class="sw"><input type="checkbox" id="cfg-tt-nextday" checked><span class="sw-track"></span></label></span><span class="cfg-def">true</span></div>
+
+        </div>
+      </div>
+
+      <!-- Devoirs -->
+      <div class="cfg-section" id="cs-hw">
+        <div class="cfg-section-head" onclick="toggleSection('cs-hw')">
+          <span class="cfg-section-title">Devoirs</span>
+          <span class="cfg-section-key">Homeworks</span>
+          <span class="cfg-section-arrow">▾</span>
+        </div>
+        <div class="cfg-body">
+          <div class="cfg-row"><span class="cfg-key">display</span><span class="cfg-ctrl"><label class="sw"><input type="checkbox" id="cfg-hw-display" checked><span class="sw-track"></span></label></span><span class="cfg-def">true</span></div>
+          <div class="cfg-row"><span class="cfg-key">displayDone</span><span class="cfg-ctrl"><label class="sw"><input type="checkbox" id="cfg-hw-done" checked><span class="sw-track"></span></label></span><span class="cfg-def">true</span></div>
+          <div class="cfg-row"><span class="cfg-key">displayDescription</span><span class="cfg-ctrl"><label class="sw"><input type="checkbox" id="cfg-hw-desc" checked><span class="sw-track"></span></label></span><span class="cfg-def">true</span></div>
+          <div class="cfg-row"><span class="cfg-key">searchDays</span><span class="cfg-ctrl"><input type="number" id="cfg-hw-days" value="14" min="1" max="60"></span><span class="cfg-def">14</span></div>
+          <div class="cfg-row"><span class="cfg-key">showHolidays</span><span class="cfg-ctrl"><label class="sw"><input type="checkbox" id="cfg-hw-holidays" checked><span class="sw-track"></span></label></span><span class="cfg-def">true</span></div>
+          <div class="cfg-row"><span class="cfg-key">showFrom</span><span class="cfg-ctrl"><input type="text" id="cfg-hw-from" value="00:00" maxlength="5" style="max-width:80px"></span><span class="cfg-def">"00:00"</span></div>
+          <div class="cfg-row"><span class="cfg-key">showUntil</span><span class="cfg-ctrl"><input type="text" id="cfg-hw-until" value="23:59" maxlength="5" style="max-width:80px"></span><span class="cfg-def">"23:59"</span></div>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="cfg-section" id="cs-gr">
+        <div class="cfg-section-head" onclick="toggleSection('cs-gr')">
+          <span class="cfg-section-title">Notes</span>
+          <span class="cfg-section-key">Grades</span>
+          <span class="cfg-section-arrow">▾</span>
+        </div>
+        <div class="cfg-body">
+          <div class="cfg-row"><span class="cfg-key">display</span><span class="cfg-ctrl"><label class="sw"><input type="checkbox" id="cfg-gr-display" checked><span class="sw-track"></span></label></span><span class="cfg-def">true</span></div>
+          <div class="cfg-row"><span class="cfg-key">displayDuration</span><span class="cfg-ctrl"><input type="number" id="cfg-gr-duration" value="30" min="1" max="365"></span><span class="cfg-def">30</span></div>
+          <div class="cfg-row"><span class="cfg-key">number</span><span class="cfg-ctrl"><input type="number" id="cfg-gr-number" value="10" min="1" max="50"></span><span class="cfg-def">10</span></div>
+          <div class="cfg-row"><span class="cfg-key">showHolidays</span><span class="cfg-ctrl"><label class="sw"><input type="checkbox" id="cfg-gr-holidays"><span class="sw-track"></span></label></span><span class="cfg-def">false</span></div>
+          <div class="cfg-row"><span class="cfg-key">showFrom</span><span class="cfg-ctrl"><input type="text" id="cfg-gr-from" value="00:00" maxlength="5" style="max-width:80px"></span><span class="cfg-def">"00:00"</span></div>
+          <div class="cfg-row"><span class="cfg-key">showUntil</span><span class="cfg-ctrl"><input type="text" id="cfg-gr-until" value="23:59" maxlength="5" style="max-width:80px"></span><span class="cfg-def">"23:59"</span></div>
+        </div>
+      </div>
+
+      <!-- Absences -->
+      <div class="cfg-section" id="cs-abs">
+        <div class="cfg-section-head" onclick="toggleSection('cs-abs')">
+          <span class="cfg-section-title">Absences</span>
+          <span class="cfg-section-key">Absences</span>
+          <span class="cfg-section-arrow">▾</span>
+        </div>
+        <div class="cfg-body">
+          <div class="cfg-row"><span class="cfg-key">display</span><span class="cfg-ctrl"><label class="sw"><input type="checkbox" id="cfg-abs-display" checked><span class="sw-track"></span></label></span><span class="cfg-def">true</span></div>
+          <div class="cfg-row"><span class="cfg-key">displayDuration</span><span class="cfg-ctrl"><input type="number" id="cfg-abs-duration" value="60" min="1" max="365"></span><span class="cfg-def">60</span></div>
+          <div class="cfg-row"><span class="cfg-key">number</span><span class="cfg-ctrl"><input type="number" id="cfg-abs-number" value="5" min="1" max="50"></span><span class="cfg-def">5</span></div>
+          <div class="cfg-row"><span class="cfg-key">showHolidays</span><span class="cfg-ctrl"><label class="sw"><input type="checkbox" id="cfg-abs-holidays"><span class="sw-track"></span></label></span><span class="cfg-def">false</span></div>
+          <div class="cfg-row"><span class="cfg-key">showFrom</span><span class="cfg-ctrl"><input type="text" id="cfg-abs-from" value="00:00" maxlength="5" style="max-width:80px"></span><span class="cfg-def">"00:00"</span></div>
+          <div class="cfg-row"><span class="cfg-key">showUntil</span><span class="cfg-ctrl"><input type="text" id="cfg-abs-until" value="23:59" maxlength="5" style="max-width:80px"></span><span class="cfg-def">"23:59"</span></div>
+        </div>
+      </div>
+
+      <!-- Retards -->
+      <div class="cfg-section" id="cs-del">
+        <div class="cfg-section-head" onclick="toggleSection('cs-del')">
+          <span class="cfg-section-title">Retards</span>
+          <span class="cfg-section-key">Delays</span>
+          <span class="cfg-section-arrow">▾</span>
+        </div>
+        <div class="cfg-body">
+          <div class="cfg-row"><span class="cfg-key">display</span><span class="cfg-ctrl"><label class="sw"><input type="checkbox" id="cfg-del-display" checked><span class="sw-track"></span></label></span><span class="cfg-def">true</span></div>
+          <div class="cfg-row"><span class="cfg-key">displayDuration</span><span class="cfg-ctrl"><input type="number" id="cfg-del-duration" value="60" min="1" max="365"></span><span class="cfg-def">60</span></div>
+          <div class="cfg-row"><span class="cfg-key">number</span><span class="cfg-ctrl"><input type="number" id="cfg-del-number" value="5" min="1" max="50"></span><span class="cfg-def">5</span></div>
+          <div class="cfg-row"><span class="cfg-key">showHolidays</span><span class="cfg-ctrl"><label class="sw"><input type="checkbox" id="cfg-del-holidays"><span class="sw-track"></span></label></span><span class="cfg-def">false</span></div>
+          <div class="cfg-row"><span class="cfg-key">showFrom</span><span class="cfg-ctrl"><input type="text" id="cfg-del-from" value="00:00" maxlength="5" style="max-width:80px"></span><span class="cfg-def">"00:00"</span></div>
+          <div class="cfg-row"><span class="cfg-key">showUntil</span><span class="cfg-ctrl"><input type="text" id="cfg-del-until" value="23:59" maxlength="5" style="max-width:80px"></span><span class="cfg-def">"23:59"</span></div>
+        </div>
+      </div>
+
+      <!-- Punitions -->
+      <div class="cfg-section" id="cs-pun">
+        <div class="cfg-section-head" onclick="toggleSection('cs-pun')">
+          <span class="cfg-section-title">Punitions</span>
+          <span class="cfg-section-key">Punishments</span>
+          <span class="cfg-section-arrow">▾</span>
+        </div>
+        <div class="cfg-body">
+          <div class="cfg-row"><span class="cfg-key">display</span><span class="cfg-ctrl"><label class="sw"><input type="checkbox" id="cfg-pun-display" checked><span class="sw-track"></span></label></span><span class="cfg-def">true</span></div>
+          <div class="cfg-row"><span class="cfg-key">displayDuration</span><span class="cfg-ctrl"><input type="number" id="cfg-pun-duration" value="60" min="1" max="365"></span><span class="cfg-def">60</span></div>
+          <div class="cfg-row"><span class="cfg-key">number</span><span class="cfg-ctrl"><input type="number" id="cfg-pun-number" value="5" min="1" max="50"></span><span class="cfg-def">5</span></div>
+          <div class="cfg-row"><span class="cfg-key">showHolidays</span><span class="cfg-ctrl"><label class="sw"><input type="checkbox" id="cfg-pun-holidays"><span class="sw-track"></span></label></span><span class="cfg-def">false</span></div>
+          <div class="cfg-row"><span class="cfg-key">showFrom</span><span class="cfg-ctrl"><input type="text" id="cfg-pun-from" value="00:00" maxlength="5" style="max-width:80px"></span><span class="cfg-def">"00:00"</span></div>
+          <div class="cfg-row"><span class="cfg-key">showUntil</span><span class="cfg-ctrl"><input type="text" id="cfg-pun-until" value="23:59" maxlength="5" style="max-width:80px"></span><span class="cfg-def">"23:59"</span></div>
+        </div>
+      </div>
+
+      <!-- Bouton generer -->
+      <button id="btn-generate" style="margin-top:18px">▶ Generer la configuration</button>
+
+      <!-- Sortie -->
+      <div id="cfg-output-wrap">
+        <p style="font-size:.8rem;color:var(--muted);margin-bottom:6px;margin-top:0">
+          Copiez ce bloc et collez-le dans le tableau <code style="color:var(--highlight)">modules</code>
+          de votre <code style="color:var(--highlight)">config.js</code>.
+        </p>
+        <textarea id="cfg-output" readonly></textarea>
+        <div class="cfg-output-actions">
+          <button class="btn-secondary" id="btn-cfg-copy">📋 Copier</button>
+        </div>
+      </div>
+
+    </div>
+  </div><!-- /pane-config -->
+
+</div><!-- /page-wrap -->
+
+<!-- ── Modale PIN ──────────────────────────────────────────────────── -->
+<div id="pin-modal">
+  <div id="pin-modal-box">
+    <h3>🔒 Code PIN Pronote</h3>
+    <p>QR Code detecte.<br>Saisissez votre code PIN a 4 chiffres.</p>
+    <input type="password" id="pin-input" maxlength="4" pattern="\d{4}" inputmode="numeric" placeholder="••••" />
+    <div id="pin-error"></div>
+    <div id="pin-modal-actions">
+      <button id="btn-pin-cancel">Annuler</button>
+      <button id="btn-pin-confirm">✅ Valider</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script>
+'use strict';
+
+/* ══════════════════════════════════════════════════════════════════════
+   CLÉ D'API
+   Les routes /MMM-Pronotepy/* sont authentifiées (cf. lib/api-auth.js).
+   Le premier chargement de la page ne peut porter la clé que dans l'URL
+   (?key=…) : on la range aussitôt en sessionStorage et on l'efface de la
+   barre d'adresse, pour qu'elle ne reste ni dans l'historique du
+   navigateur ni dans un en-tête Referer. Les appels suivants la passent
+   en en-tête X-Api-Key.
+   sessionStorage et non localStorage : la clé disparaît à la fermeture
+   de l'onglet — cette page n'est ouverte que le temps d'une
+   configuration.
+   ══════════════════════════════════════════════════════════════════════ */
+const API_KEY_STORE = 'mmm-pronotepy-api-key';
+
+let _apiKey = (() => {
+  const params  = new URLSearchParams(location.search);
+  const fromUrl = params.get('key');
+  if (fromUrl) {
+    try { sessionStorage.setItem(API_KEY_STORE, fromUrl); } catch { /* mode privé */ }
+    params.delete('key');
+    const query = params.toString();
+    history.replaceState(null, '', location.pathname + (query ? '?' + query : '') + location.hash);
+    return fromUrl;
+  }
+  try { return sessionStorage.getItem(API_KEY_STORE) || ''; } catch { return ''; }
+})();
+
+/* Une navigation HTML ne peut pas porter d'en-tête : les liens internes
+ * doivent reprendre la clé dans leur URL. */
+function withKey (url) {
+  if (!_apiKey) return url;
+  return url + (url.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(_apiKey);
+}
+
+function apiFetch (url, opts) {
+  const options = Object.assign({}, opts);
+  options.headers = Object.assign({}, options.headers);
+  if (_apiKey) options.headers['X-Api-Key'] = _apiKey;
+  return fetch(url, options).then(res => {
+    if (res.status === 401) askForKey();
+    return res;
+  });
+}
+
+/* Bandeau de saisie, affiché une seule fois : sans clé valide, chaque
+ * sondage périodique déclencherait sinon un 401 de plus. */
+let _keyPromptShown = false;
+function askForKey () {
+  if (_keyPromptShown) return;
+  _keyPromptShown = true;
+
+  const bar = document.createElement('div');
+  bar.style.cssText = 'position:fixed;inset:0 0 auto 0;z-index:9999;background:#3a1d1d;' +
+                      'color:#f4e6e6;padding:.9rem 1rem;display:flex;gap:.6rem;' +
+                      'align-items:center;flex-wrap:wrap;font-size:.92rem;' +
+                      'box-shadow:0 2px 12px rgba(0,0,0,.45)';
+  const label = document.createElement('span');
+  label.textContent = 'Accès refusé (401) — clé d\'API requise :';
+  const input = document.createElement('input');
+  input.type = 'password';
+  input.placeholder = 'clé d\'API';
+  input.autocomplete = 'off';
+  input.style.cssText = 'flex:1 1 14rem;padding:.4rem .6rem;border-radius:6px;' +
+                        'border:1px solid #6b3a3a;background:#241213;color:inherit';
+  const button = document.createElement('button');
+  button.textContent = 'Valider';
+  button.style.cssText = 'padding:.4rem .9rem;border-radius:6px;border:0;cursor:pointer';
+
+  const submit = () => {
+    const value = input.value.trim();
+    if (!value) return;
+    try { sessionStorage.setItem(API_KEY_STORE, value); } catch { /* mode privé */ }
+    location.reload();
+  };
+  button.addEventListener('click', submit);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+
+  bar.append(label, input, button);
+  document.body.prepend(bar);
+  input.focus();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('a[href^="/MMM-Pronotepy/"]').forEach(a => {
+    a.href = withKey(a.getAttribute('href'));
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   ONGLETS PRINCIPAUX
+   ══════════════════════════════════════════════════════════════════════ */
+document.querySelectorAll('.main-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.main-pane').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    const pane = document.getElementById('pane-' + tab.dataset.pane);
+    if (pane) pane.classList.add('active');
+
+    if (tab.dataset.pane === 'logs')   startLogPolling();
+    else                               stopLogPolling();
+    if (tab.dataset.pane === 'config') loadChildrenIntoConfig();
+    if (tab.dataset.pane !== 'auth')   stopCamera();
+  });
+});
+
+/* ── QR sub-tabs ───────────────────────────────────────────────────── */
+document.querySelectorAll('.tab-bar > .tab[data-sub]').forEach(tab => {
+  tab.addEventListener('click', () => {
+    tab.parentElement.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('#tab-qr .tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById('sub-' + tab.dataset.sub)?.classList.add('active');
+    if (tab.dataset.sub === 'scan') {
+      startCamera();
+    } else {
+      stopCamera();
+      if (tab.dataset.sub === 'image' && !window._scannedQR) {
+        document.getElementById('qr-drop-text').textContent = 'Glissez, collez ou selectionnez une image\ndu QR Code de Pronote';
+        document.getElementById('qr-drop-zone').classList.remove('decoded');
+        document.getElementById('image-status').style.display = 'none';
+      }
+    }
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   COMPTES
+   Chaque compte Pronote a son propre jeu de jetons. La page travaille
+   toujours sur UN compte a la fois : celui du selecteur. Sans cela, un
+   scan de QR Code irait ecraser les jetons d un autre etablissement.
+   ══════════════════════════════════════════════════════════════════════ */
+const ACCOUNT_STORE = 'mmm-pronotepy-account';
+const ACCOUNT_DEFAULT = 'default';
+
+/* Normalisation identique a lib/accounts.js : ce que l utilisateur tape
+   doit designer le meme fichier que ce que Node calculera. */
+function normalizeAccount (valeur) {
+  const net = String(valeur == null ? '' : valeur)
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48);
+  return net || ACCOUNT_DEFAULT;
+}
+
+let _account = (() => {
+  try { return sessionStorage.getItem(ACCOUNT_STORE) || ACCOUNT_DEFAULT; }
+  catch { return ACCOUNT_DEFAULT; }
+})();
+
+function currentAccount () { return _account; }
+
+function setAccount (valeur) {
+  _account = normalizeAccount(valeur);
+  try { sessionStorage.setItem(ACCOUNT_STORE, _account); } catch { /* mode prive */ }
+  const sel = document.getElementById('account-select');
+  if (sel && sel.value !== _account) sel.value = _account;
+  loadStatus();
+  loadChildrenIntoConfig();
+}
+
+function renderAccountList (liste) {
+  const sel = document.getElementById('account-select');
+  if (!sel) return;
+  const connus = Array.from(new Set([...(liste || []), _account])).sort();
+  sel.innerHTML = '';
+  for (const nom of connus) {
+    const opt = document.createElement('option');
+    opt.value = nom;
+    opt.textContent = nom === ACCOUNT_DEFAULT ? nom + '  (principal)' : nom;
+    sel.appendChild(opt);
+  }
+  sel.value = _account;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const sel   = document.getElementById('account-select');
+  const input = document.getElementById('account-new');
+  const btn   = document.getElementById('btn-account-add');
+  if (!sel || !input || !btn) return;
+
+  sel.addEventListener('change', () => setAccount(sel.value));
+
+  btn.addEventListener('click', () => {
+    if (input.style.display === 'none') {
+      input.style.display = '';
+      input.value = '';
+      input.focus();
+      btn.textContent = 'Valider';
+      return;
+    }
+    const nom = normalizeAccount(input.value);
+    /* Un champ vide donnerait « default » et ecraserait le compte
+       principal sans que personne ne l ait demande. */
+    if (!input.value.trim()) { input.focus(); return; }
+    input.style.display = 'none';
+    btn.textContent = '+ Nouveau';
+    setAccount(nom);
+    renderAccountList([nom]);
+  });
+
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') btn.click(); });
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   STATUT
+   ══════════════════════════════════════════════════════════════════════ */
+async function loadStatus () {
+  try {
+    const r   = await apiFetch('/MMM-Pronotepy/api/status?account='
+                               + encodeURIComponent(currentAccount()));
+    const sta = await r.json();
+    renderAccountList(sta.accounts);
+    const box = document.getElementById('status-content');
+    const btn = document.getElementById('btn-clear');
+
+    if (!sta.hasTokens || !sta.hasPrimary) {
+      box.className = 'status-box status-err';
+      box.innerHTML = '<strong>❌ Aucun token</strong> pour le compte <code>'
+                    + escapeHTML(sta.account) + '</code> — authentifiez-vous ci-dessous.';
+      btn.style.display = 'none';
+      return;
+    }
+
+    if (sta.moduleError) {
+      box.className = 'status-box status-err';
+      let html = '<strong>⚠️ Token expire</strong> — ' + escapeHTML(sta.username);
+      html += '<br><span style="font-size:.85rem;color:#f0a500">Le module MagicMirror ne peut pas se connecter : <em>' + escapeHTML(sta.moduleError) + '</em></span>';
+      html += '<br><br>Veuillez vous re-authentifier ci-dessous.';
+      box.innerHTML = html;
+      btn.style.display = 'block';
+    } else {
+      box.className = sta.isConnected ? 'status-box status-ok' : 'status-box status-info';
+      let html = sta.isConnected
+        ? '<strong>✅ Connecte</strong> — ' + escapeHTML(sta.username)
+        : '<strong>⏳ Token present</strong> — ' + escapeHTML(sta.username) + ' (connexion en cours…)';
+      if (sta.isParent) html += ' <span class="badge badge-ok">👨‍👩‍👧 Compte Parent</span>';
+      html += '<br>Token principal : <span class="badge badge-ok">OK</span>';
+      html += ' Token backup : <span class="badge ' + (sta.hasBackup ? 'badge-ok' : 'badge-no') + '">' + (sta.hasBackup ? 'OK' : 'absent') + '</span>';
+      box.innerHTML = html;
+      btn.style.display = 'block';
+    }
+
+    if (sta.isParent && sta.children && sta.children.length > 0) {
+      showChildrenAndConfig(sta.children, box);
+    }
+  } catch {
+    document.getElementById('status-content').textContent = 'Impossible de recuperer le statut.';
+  }
+}
+
+function showChildrenAndConfig (children, appendTo) {
+  let html = '<hr style="border-color:var(--border);margin:14px 0">';
+  html += '<strong>Enfants detectes :</strong>';
+  html += '<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px">';
+  for (const child of children) {
+    html += '<div style="background:var(--accent);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:.85rem">';
+    html += '<strong>' + escapeHTML(child.name) + '</strong>';
+    if (child.className)        html += '<br><span style="color:var(--muted);font-size:.78rem">' + escapeHTML(child.className) + '</span>';
+    if (child.establishmentName) html += '<br><span style="color:var(--muted);font-size:.72rem">' + escapeHTML(child.establishmentName) + '</span>';
+    html += '</div>';
+  }
+  html += '</div>';
+  appendTo.innerHTML += html;
+}
+
+/* Polling du statut */
+let _statusPollTimer = null;
+function _scheduleStatusPoll (delayMs) {
+  clearTimeout(_statusPollTimer);
+  _statusPollTimer = setTimeout(async () => {
+    await loadStatus();
+    const box  = document.getElementById('status-content');
+    const fast = box.classList.contains('status-info') || box.classList.contains('status-err');
+    _scheduleStatusPoll(fast ? 10_000 : 30_000);
+  }, delayMs);
+}
+loadStatus().then(() => _scheduleStatusPoll(10_000));
+
+document.getElementById('btn-clear').addEventListener('click', async () => {
+  if (!confirm('Supprimer les tokens du compte « ' + currentAccount()
+             + ' » ? Ce compte devra etre reconfigure.')) return;
+  await apiFetch('/MMM-Pronotepy/api/clear', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ account: currentAccount() })
+  });
+  loadStatus();
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   HELPERS
+   ══════════════════════════════════════════════════════════════════════ */
+function escapeHTML (str) {
+  const d = document.createElement('div');
+  d.textContent = str == null ? '' : String(str);
+  return d.innerHTML;
+}
+
+function showResult (el, type, html) {
+  el.style.display = 'block';
+  el.className     = 'status-box ' + (type === 'ok' ? 'status-ok' : 'status-err');
+  el.innerHTML     = html;
+}
+
+function showRestartNotice () {
+  const notice = document.getElementById('restart-notice');
+  const link   = document.getElementById('restart-config-url');
+  const url    = withKey(window.location.origin + '/MMM-Pronotepy/config');
+  link.href        = url;
+  link.textContent = url;
+  notice.style.display = 'block';
+  notice.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   LOGS
+   ══════════════════════════════════════════════════════════════════════ */
+const _serverLogs = [];
+const _clientLogs = [];
+let _lastLogTs    = 0;
+let _logPollTimer = null;
+
+/* ── Logs client (page) ── */
+function _clientLog (level, msg) {
+  const entry = { ts: Date.now(), level, msg: String(msg) };
+  _clientLogs.push(entry);
+  if (_clientLogs.length > 300) _clientLogs.shift();
+  renderLogs();
+  console[level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'log']('[MMM-Pronotepy config] ' + msg);
+}
+const clog = {
+  info:  m => _clientLog('info',  m),
+  ok:    m => _clientLog('ok',    m),
+  warn:  m => _clientLog('warn',  m),
+  error: m => _clientLog('error', m),
+};
+
+/* ── Polling logs serveur ── */
+async function pollServerLogs () {
+  try {
+    const r    = await apiFetch('/MMM-Pronotepy/api/logs?since=' + _lastLogTs);
+    const data = await r.json();
+    if (Array.isArray(data.logs) && data.logs.length > 0) {
+      _serverLogs.push(...data.logs);
+      if (_serverLogs.length > 300) _serverLogs.splice(0, _serverLogs.length - 300);
+      renderLogs();
+    }
+    if (data.now) _lastLogTs = data.now;
+  } catch { /* silently ignore */ }
+}
+
+function startLogPolling () {
+  if (_logPollTimer) return;
+  pollServerLogs();
+  _logPollTimer = setInterval(pollServerLogs, 4000);
+  const dot   = document.getElementById('log-auto-dot');
+  const label = document.getElementById('log-auto-label');
+  if (dot)   dot.style.background   = '#2ecc71';
+  if (label) label.textContent      = 'actif';
+}
+
+function stopLogPolling () {
+  clearInterval(_logPollTimer);
+  _logPollTimer = null;
+  const dot   = document.getElementById('log-auto-dot');
+  const label = document.getElementById('log-auto-label');
+  if (dot)   dot.style.background = '#555';
+  if (label) label.textContent    = 'pause';
+}
+
+/* ── Rendu ── */
+function renderLogs () {
+  const filterBtn = document.querySelector('.log-filter-btn.active');
+  const filter    = filterBtn ? filterBtn.dataset.filter : 'all';
+
+  const combined = [];
+  _serverLogs.forEach(l => combined.push({ ...l, src: 'server' }));
+  _clientLogs.forEach(l => combined.push({ ...l, src: 'client' }));
+  combined.sort((a, b) => a.ts - b.ts);
+
+  const filtered = filter === 'all' ? combined : combined.filter(l => l.level === filter);
+  const visible  = filtered.slice(-300);
+
+  const out = document.getElementById('main-log-output');
+  if (!out) return;
+  const wasAtBottom = out.scrollHeight - out.clientHeight - out.scrollTop < 40;
+  out.innerHTML = '';
+  for (const log of visible) {
+    const ts  = new Date(log.ts).toLocaleTimeString('fr-FR', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const div = document.createElement('div');
+    div.className = 'log-line';
+    div.innerHTML =
+      '<span class="log-ts">' + ts + '</span>' +
+      '<span class="log-src log-src--' + escapeHTML(log.src) + '">' + escapeHTML(log.src) + '</span>' +
+      '<span class="log-' + escapeHTML(log.level === 'ok' ? 'ok' : log.level) + '">' + escapeHTML(log.msg) + '</span>';
+    out.appendChild(div);
+  }
+  if (wasAtBottom) out.scrollTop = out.scrollHeight;
+}
+
+/* ── Filtres ── */
+document.querySelectorAll('.log-filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.log-filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderLogs();
+  });
+});
+
+/* ── Actions logs ── */
+document.getElementById('btn-log-clear').addEventListener('click', () => {
+  _serverLogs.length = 0;
+  _clientLogs.length = 0;
+  _lastLogTs = 0;
+  renderLogs();
+});
+
+document.getElementById('btn-log-copy').addEventListener('click', () => {
+  const combined = [
+    ..._serverLogs.map(l => ({ ...l, src: 'server' })),
+    ..._clientLogs.map(l => ({ ...l, src: 'client' }))
+  ].sort((a, b) => a.ts - b.ts);
+  const text = combined.map(l => {
+    const ts = new Date(l.ts).toLocaleTimeString('fr-FR', { hour12: false });
+    return '[' + ts + '] [' + l.src + '] [' + l.level + '] ' + l.msg;
+  }).join('\n');
+  navigator.clipboard.writeText(text).then(() => clog.ok('Logs copies dans le presse-papier'));
+});
+
+document.getElementById('btn-log-download').addEventListener('click', () => {
+  const combined = [
+    ..._serverLogs.map(l => ({ ...l, src: 'server' })),
+    ..._clientLogs.map(l => ({ ...l, src: 'client' }))
+  ].sort((a, b) => a.ts - b.ts);
+  const text = combined.map(l => {
+    const ts = new Date(l.ts).toISOString();
+    return '[' + ts + '] [' + l.src + '] [' + l.level + '] ' + l.msg;
+  }).join('\n');
+  const blob = new Blob([text], { type: 'text/plain' });
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = 'mmm-pronotepy-' + new Date().toISOString().slice(0, 10) + '.log';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+/* ── Init chargement de la page ── */
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    clog.info('Page chargee — jsQR disponible : ' + (typeof jsQR === 'function' ? 'oui' : 'NON'));
+    clog.info('User-Agent : ' + navigator.userAgent.substring(0, 80));
+  }, 300);
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   CONFIGURATION
+   ══════════════════════════════════════════════════════════════════════ */
+function toggleSection (id) {
+  document.getElementById(id)?.classList.toggle('collapsed');
+}
+
+async function loadChildrenIntoConfig () {
+  try {
+    const r   = await apiFetch('/MMM-Pronotepy/api/status?account='
+                               + encodeURIComponent(currentAccount()));
+    const sta = await r.json();
+    const sel = document.getElementById('cfg-childName');
+    if (!sel) return;
+    /* Preserve current selection */
+    const prev = sel.value;
+    while (sel.options.length > 1) sel.remove(1); // keep placeholder
+
+    const estParent = !!(sta.isParent && sta.children && sta.children.length > 0);
+
+    /* Le champ est reconstruit a chaque changement de compte : passer
+       d un compte eleve a un compte parent doit le reactiver, et pas
+       laisser « N/A » grise sur un compte qui a bien des enfants. */
+    sel.disabled = !estParent;
+    sel.options[0].textContent = estParent
+      ? '— aucun (enfant par defaut) —'
+      : 'N/A — compte eleve';
+
+    if (!estParent) return;
+
+    for (const c of sta.children) {
+      const opt = document.createElement('option');
+      opt.value       = c.name;
+      opt.textContent = c.name + (c.className ? ' (' + c.className + ')' : '');
+      sel.appendChild(opt);
+    }
+    sel.parentElement.previousElementSibling.style.display = 'block'; // show label
+    if (prev) sel.value = prev;
+  } catch { /* ignore */ }
+}
+
+function boolVal (id) {
+  const el = document.getElementById(id);
+  return el ? el.checked : false;
+}
+function numVal (id, fallback) {
+  const el  = document.getElementById(id);
+  const val = el ? parseInt(el.value, 10) : NaN;
+  return isNaN(val) ? fallback : val;
+}
+function strVal (id, fallback) {
+  const el = document.getElementById(id);
+  return (el && el.value.trim()) ? el.value.trim() : fallback;
+}
+
+document.getElementById('btn-generate').addEventListener('click', () => {
+  const childName = strVal('cfg-childName', '');
+  const position  = strVal('cfg-position', 'top_left');
+  const interval  = strVal('cfg-interval', '15m');
+  const header    = document.getElementById('cfg-childName').value || childName || 'Pronote';
+
+  const b = (id) => boolVal(id);
+  const n = (id, d) => numVal(id, d);
+  const s = (id, d) => strVal(id, d);
+
+  const lines = [
+    '{',
+    '  module: "MMM-Pronotepy",',
+    '  position: "' + position + '",',
+    '  header: "' + escapeHTML(header) + '",',
+    '  config: {',
+    currentAccount() !== ACCOUNT_DEFAULT
+      ? '    account: "' + currentAccount() + '",'
+      : '    // account: "default",  // un compte Pronote = un jeu de jetons',
+    childName ? '    childName: "' + childName + '",' : '    // childName: "",  // optionnel (compte parent)',
+    '    updateInterval: "' + interval + '",',
+    '',
+    '    Header: {',
+    '      displayEstablishmentName: ' + b('cfg-hdr-estab') + ',',
+    '      displayStudentName:       ' + b('cfg-hdr-name')  + ',',
+    '      displayStudentClass:      ' + b('cfg-hdr-class') + '',
+    '    },',
+    '',
+    '    Timetable: {',
+    '      display:        ' + b('cfg-tt-display')  + ',',
+    '      displayToday:   ' + b('cfg-tt-today')    + ',',
+    '      displayNextDay: ' + b('cfg-tt-nextday')  + ',',
+    '      displayTeacher: ' + b('cfg-tt-teacher')  + ',',
+    '      displayRoom:    ' + b('cfg-tt-room')     + ',',
+    '      showOnlyFuture: ' + b('cfg-tt-future')   + ',',
+    '      showHolidays:   ' + b('cfg-tt-holidays') + ',',
+    '      showFrom:       "' + s('cfg-tt-from', '00:00') + '",',
+    '      showUntil:      "' + s('cfg-tt-until', '23:59') + '"',
+    '    },',
+    '',
+    '    Homeworks: {',
+    '      display:            ' + b('cfg-hw-display')  + ',',
+    '      displayDone:        ' + b('cfg-hw-done')     + ',',
+    '      displayDescription: ' + b('cfg-hw-desc')     + ',',
+    '      searchDays:         ' + n('cfg-hw-days', 14) + ',',
+    '      showHolidays:       ' + b('cfg-hw-holidays') + ',',
+    '      showFrom:           "' + s('cfg-hw-from', '00:00') + '",',
+    '      showUntil:          "' + s('cfg-hw-until', '23:59') + '"',
+    '    },',
+    '',
+    '    Grades: {',
+    '      display:         ' + b('cfg-gr-display')      + ',',
+    '      displayDuration: ' + n('cfg-gr-duration', 30) + ',',
+    '      number:          ' + n('cfg-gr-number', 10)   + ',',
+    '      showHolidays:    ' + b('cfg-gr-holidays')     + ',',
+    '      showFrom:        "' + s('cfg-gr-from', '00:00') + '",',
+    '      showUntil:       "' + s('cfg-gr-until', '23:59') + '"',
+    '    },',
+    '',
+    '    Absences: {',
+    '      display:         ' + b('cfg-abs-display')      + ',',
+    '      displayDuration: ' + n('cfg-abs-duration', 60) + ',',
+    '      number:          ' + n('cfg-abs-number', 5)    + ',',
+    '      showHolidays:    ' + b('cfg-abs-holidays')     + ',',
+    '      showFrom:        "' + s('cfg-abs-from', '00:00') + '",',
+    '      showUntil:       "' + s('cfg-abs-until', '23:59') + '"',
+    '    },',
+    '',
+    '    Delays: {',
+    '      display:         ' + b('cfg-del-display')      + ',',
+    '      displayDuration: ' + n('cfg-del-duration', 60) + ',',
+    '      number:          ' + n('cfg-del-number', 5)    + ',',
+    '      showHolidays:    ' + b('cfg-del-holidays')     + ',',
+    '      showFrom:        "' + s('cfg-del-from', '00:00') + '",',
+    '      showUntil:       "' + s('cfg-del-until', '23:59') + '"',
+    '    },',
+    '',
+    '    Punishments: {',
+    '      display:         ' + b('cfg-pun-display')      + ',',
+    '      displayDuration: ' + n('cfg-pun-duration', 60) + ',',
+    '      number:          ' + n('cfg-pun-number', 5)    + ',',
+    '      showHolidays:    ' + b('cfg-pun-holidays')     + ',',
+    '      showFrom:        "' + s('cfg-pun-from', '00:00') + '",',
+    '      showUntil:       "' + s('cfg-pun-until', '23:59') + '"',
+    '    }',
+    '  }',
+    '}'
+  ];
+
+  document.getElementById('cfg-output').value = lines.join('\n');
+  const wrap = document.getElementById('cfg-output-wrap');
+  wrap.style.display = 'block';
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+});
+
+document.getElementById('btn-cfg-copy').addEventListener('click', () => {
+  const ta = document.getElementById('cfg-output');
+  navigator.clipboard.writeText(ta.value).then(() => {
+    const btn = document.getElementById('btn-cfg-copy');
+    const prev = btn.textContent;
+    btn.textContent = '✅ Copie !';
+    setTimeout(() => { btn.textContent = prev; }, 1800);
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   MODALE PIN
+   ══════════════════════════════════════════════════════════════════════ */
+window._scannedQR = null;
+
+function openPinModal () {
+  document.getElementById('pin-input').value = '';
+  document.getElementById('pin-error').textContent = '';
+  document.getElementById('pin-modal').classList.add('open');
+  setTimeout(() => document.getElementById('pin-input').focus(), 100);
+}
+function closePinModal () {
+  document.getElementById('pin-modal').classList.remove('open');
+}
+
+document.getElementById('btn-pin-cancel').addEventListener('click', () => {
+  closePinModal();
+  window._scannedQR = null;
+  const sc = document.getElementById('scan-status');
+  sc.textContent = '🔍 Pointez la camera vers le QR Code…';
+  sc.className   = 'status-box status-info';
+});
+
+document.getElementById('pin-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('btn-pin-confirm').click();
+});
+
+document.getElementById('btn-pin-confirm').addEventListener('click', async () => {
+  const pin = document.getElementById('pin-input').value.trim();
+  if (!/^\d{4}$/.test(pin)) {
+    document.getElementById('pin-error').textContent = 'PIN invalide : 4 chiffres requis.';
+    clog.warn('PIN invalide saisi : ' + JSON.stringify(pin));
+    return;
+  }
+  document.getElementById('pin-error').textContent = '';
+
+  const btn = document.getElementById('btn-pin-confirm');
+  btn.disabled  = true;
+  btn.innerHTML = '<span class="spinner"></span>Connexion…';
+
+  try {
+    const qrToken = window._scannedQR;
+    clog.info('Envoi setup-qr — PIN=' + '*'.repeat(pin.length));
+
+    try {
+      const parsed = JSON.parse(typeof qrToken === 'string' ? qrToken : JSON.stringify(qrToken));
+      clog.info('QR champs : jeton=' + (parsed.jeton ? 'OK (' + String(parsed.jeton).length + ' car.)' : 'ABSENT')
+        + ' | login=' + (parsed.login ? 'OK' : 'ABSENT')
+        + ' | url=' + (parsed.url || 'ABSENT'));
+    } catch (pe) { clog.error('qrToken non parseable : ' + pe.message); }
+
+    const _ctrl  = new AbortController();
+    const _timer = setTimeout(() => _ctrl.abort(), 35_000);
+    let resp;
+    try {
+      resp = await apiFetch('/MMM-Pronotepy/api/setup-qr', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body:   JSON.stringify({ qrToken, pin, childName: '', account: currentAccount() }),
+        signal: _ctrl.signal
+      });
+    } finally { clearTimeout(_timer); }
+    clog.info('Reponse HTTP : ' + resp.status);
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || resp.statusText);
+
+    closePinModal();
+    clog.ok('Connexion reussie — ' + data.username + (data.isParent ? ' [PARENT]' : ' [ELEVE]'));
+    if (data.isParent) clog.info('Enfants : ' + (data.children || []).map(c => c.name).join(', '));
+    showResult(document.getElementById('qr-result'), 'ok', '✅ Connexion reussie — ' + escapeHTML(data.username));
+    loadStatus();
+    showRestartNotice();
+  } catch (e) {
+    document.getElementById('pin-error').textContent = '❌ ' + e.message;
+    clog.error('Echec setup-qr : ' + e.message);
+  } finally {
+    btn.disabled  = false;
+    btn.innerHTML = '✅ Valider';
+  }
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   JSON COLLE (sous-onglet paste)
+   ══════════════════════════════════════════════════════════════════════ */
+document.getElementById('qr-json').addEventListener('input', function () {
+  const raw     = this.value.trim();
+  const statusEl = document.getElementById('paste-status');
+  if (!raw) { statusEl.style.display = 'none'; window._scannedQR = null; return; }
+  clog.info('JSON saisi — longueur : ' + raw.length + ' car.');
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed.jeton) throw new Error('Champ "jeton" manquant');
+    if (!parsed.url)   throw new Error('Champ "url" manquant');
+    window._scannedQR = raw;
+    const urlHost = (() => { try { return new URL(parsed.url).hostname; } catch { return '(url invalide)'; } })();
+    clog.ok('JSON valide — domaine : ' + urlHost);
+    statusEl.style.display = 'block';
+    statusEl.className     = 'status-box status-ok';
+    statusEl.textContent   = '✅ JSON valide — ' + parsed.url;
+    openPinModal();
+  } catch (e) {
+    window._scannedQR      = null;
+    clog.error('JSON invalide : ' + e.message);
+    statusEl.style.display = 'block';
+    statusEl.className     = 'status-box status-err';
+    statusEl.textContent   = '❌ JSON invalide : ' + e.message;
+  }
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   IMAGE QR CODE
+   ══════════════════════════════════════════════════════════════════════ */
+function decodeQRFromImage (img) {
+  clog.info('Decodage image — taille : ' + img.naturalWidth + 'x' + img.naturalHeight + 'px');
+  if (typeof jsQR !== 'function') { clog.error('jsQR non charge !'); return null; }
+  const canvas = document.getElementById('qr-decode-canvas');
+  const ctx    = canvas.getContext('2d');
+  canvas.width  = img.naturalWidth  || img.width;
+  canvas.height = img.naturalHeight || img.height;
+  ctx.drawImage(img, 0, 0);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const code      = jsQR(imageData.data, imageData.width, imageData.height);
+  if (code) clog.ok('jsQR a trouve un QR code');
+  else      clog.warn('jsQR n\'a detecte aucun QR code dans l\'image');
+  return code?.data || null;
+}
+
+function handleQRImageFile (file) {
+  if (!file) return;
+  clog.info('Fichier recu : ' + file.name + ' | type : ' + file.type + ' | taille : ' + file.size + ' o');
+  if (!file.type.startsWith('image/')) { clog.warn('Fichier ignore — pas une image'); return; }
+  const statusEl = document.getElementById('image-status');
+  const dropZone = document.getElementById('qr-drop-zone');
+  const dropText = document.getElementById('qr-drop-text');
+  const reader   = new FileReader();
+  reader.onload = function (ev) {
+    const img = new Image();
+    img.onload = function () {
+      const result = decodeQRFromImage(img);
+      if (result) {
+        window._scannedQR = result;
+        dropZone.classList.add('decoded');
+        dropText.textContent = 'QR Code decode avec succes !';
+        statusEl.style.display = 'block';
+        statusEl.className     = 'status-box status-ok';
+        statusEl.textContent   = '✅ QR Code detecte dans l\'image';
+        openPinModal();
+      } else {
+        dropZone.classList.remove('decoded');
+        dropText.textContent   = 'Aucun QR Code detecte — reessayez avec une image plus nette';
+        statusEl.style.display = 'block';
+        statusEl.className     = 'status-box status-err';
+        statusEl.textContent   = '❌ Impossible de lire un QR Code dans cette image.';
+      }
+    };
+    img.onerror = () => clog.error('Impossible de charger l\'image');
+    img.src = ev.target.result;
+  };
+  reader.onerror = () => clog.error('FileReader erreur : ' + reader.error);
+  reader.readAsDataURL(file);
+}
+
+(function setupImageDrop () {
+  const dropZone  = document.getElementById('qr-drop-zone');
+  const fileInput = document.getElementById('qr-file-input');
+  dropZone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) handleQRImageFile(fileInput.files[0]);
+    fileInput.value = '';
+  });
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) handleQRImageFile(file);
+  });
+  document.getElementById('btn-paste-image').addEventListener('click', async () => {
+    clog.info('Bouton coller clique — lecture du presse-papier…');
+    try {
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        const imgType = item.types.find(t => t.startsWith('image/'));
+        if (imgType) {
+          const blob = await item.getType(imgType);
+          handleQRImageFile(new File([blob], 'clipboard.png', { type: imgType }));
+          return;
+        }
+      }
+      clog.warn('Aucune image dans le presse-papier');
+    } catch (e) {
+      clog.error('Clipboard API : ' + e.message);
+    }
+  });
+  document.addEventListener('paste', e => {
+    const isImageTabActive = document.getElementById('sub-image')?.classList.contains('active');
+    if (!isImageTabActive) return;
+    const items = e.clipboardData?.items || [];
+    for (const item of items) {
+      if (item.type.startsWith('image/')) { handleQRImageFile(item.getAsFile()); break; }
+    }
+  });
+})();
+
+/* ══════════════════════════════════════════════════════════════════════
+   SCAN CAMERA
+   ══════════════════════════════════════════════════════════════════════ */
+let _stream = null, _scanInterval = null;
+
+async function startCamera () {
+  if (_stream) return;
+  const scanStatus = document.getElementById('scan-status');
+  scanStatus.textContent = '🔍 Pointez la camera vers le QR Code…';
+  scanStatus.className   = 'status-box status-info';
+  try {
+    _stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    const video = document.getElementById('qr-video');
+    video.srcObject = _stream;
+    document.getElementById('btn-stop-scan').style.display = 'block';
+    const canvas = document.createElement('canvas');
+    const ctx    = canvas.getContext('2d');
+    _scanInterval = setInterval(() => {
+      if (!video.videoWidth) return;
+      canvas.width  = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+      const img  = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = typeof jsQR === 'function' ? jsQR(img.data, img.width, img.height) : null;
+      if (code?.data) {
+        window._scannedQR = code.data;
+        scanStatus.textContent = '✅ QR Code detecte !';
+        scanStatus.className   = 'status-box status-ok';
+        stopCamera();
+        openPinModal();
+      }
+    }, 200);
+  } catch (e) {
+    scanStatus.textContent = '❌ Acces camera refuse : ' + e.message;
+    scanStatus.className   = 'status-box status-err';
+  }
+}
+
+function stopCamera () {
+  clearInterval(_scanInterval);
+  _scanInterval = null;
+  if (_stream) { _stream.getTracks().forEach(t => t.stop()); _stream = null; }
+  const btn = document.getElementById('btn-stop-scan');
+  if (btn) btn.style.display = 'none';
+}
+
+document.getElementById('btn-stop-scan').addEventListener('click', stopCamera);
+</script>
+</body>
+</html>

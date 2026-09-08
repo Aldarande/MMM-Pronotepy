@@ -1,0 +1,35 @@
+<div id="PRONOTE_LOADING">
+    <div id="PRONOTE_LOGO"></div>
+</div>
+<div id="PRONOTE_ERROR">
+    {% if error.type == "no_tokens" %}
+        <div class="PRONOTE_ERROR_TITLE">⚠ Module non configuré</div>
+        <div class="PRONOTE_ERROR_DETAIL">Aucune connexion Pronote n'a été configurée.</div>
+        <div class="PRONOTE_ERROR_ACTION">Configurez votre compte sur cette adresse :</div>
+        {% if fullConfigUrl %}
+            <div class="PRONOTE_ERROR_URL">{{ fullConfigUrl }}</div>
+        {% endif %}
+    {% elif error.type == "auth_failed" %}
+        <div class="PRONOTE_ERROR_TITLE">🔒 Token expiré</div>
+        <div class="PRONOTE_ERROR_DETAIL">La connexion à Pronote a été perdue. Votre token n'est plus valide.</div>
+        <div class="PRONOTE_ERROR_ACTION">Rendez-vous sur cette adresse pour renouveler la connexion :</div>
+        {% if fullConfigUrl %}
+            <div class="PRONOTE_ERROR_URL">{{ fullConfigUrl }}</div>
+        {% endif %}
+    {% else %}
+        <div class="PRONOTE_ERROR_TITLE">✖ Erreur de connexion</div>
+        <div class="PRONOTE_ERROR_DETAIL">
+            {% if error.message %}
+                {{ error.message | escape }}
+            {% else %}
+                {{ error | string | escape }}
+            {% endif %}
+        </div>
+        <div class="PRONOTE_ERROR_ACTION">Vérifiez que le serveur Pronote est accessible et que la configuration est correcte.</div>
+    {% endif %}
+    {% if error.configUrl %}
+        <div id="PRONOTE_CONFIG_LINK">
+            ⚙ Configurez le module : <span class="highlight">{{ error.configUrl }}</span>
+        </div>
+    {% endif %}
+</div>

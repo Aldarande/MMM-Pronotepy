@@ -1,0 +1,19 @@
+<div id="PRONOTE_HOLIDAYS">
+    <div class="PRONOTE_TEXT_UNDERLINE">Prochaines vacances & jours fériés</div>
+    {% set count = 0 %}
+    {% for holiday in userData.holidays %}
+        {% if count < config.Holidays.number %}
+            <div class="PRONOTE_DETAIL">
+                <div class="PRONOTE_HOURS">
+                    {% if holiday.formattedFrom == holiday.formattedTo %}
+                        Le {{ holiday.formattedFrom }} (jour férié)
+                    {% else %}
+                        Du {{ holiday.formattedFrom }} au {{ holiday.formattedTo }}
+                    {% endif %}
+                </div>
+                <div class="PRONOTE_VALUES">{{ holiday.name }}</div>
+            </div>
+        {% endif %}
+        {% set count = count + 1 %}
+    {% endfor %}
+</div>
