@@ -11,11 +11,12 @@ Le module est en deux morceaux : un **pont Python** (`pronote_bridge.py`) qui pa
 - [Fonctionnalités](#fonctionnalités)
 - [Prérequis](#prérequis)
   - [Sous Docker : vérifiez que l'image contient Python](#sous-docker--vérifiez-que-limage-contient-python)
+- [Installation](#installation)
+  - [Installation sous Docker](#installation-sous-docker)
 - [Interpréteur Python](#interpréteur-python)
 - [Hors ligne](#hors-ligne)
 - [Plusieurs comptes Pronote](#plusieurs-comptes-pronote)
 - [Fenêtre de nuit](#fenêtre-de-nuit)
-- [Installation](#installation)
 - [Sécurité — clé d'API](#sécurité--clé-dapi)
 - [Première connexion](#première-connexion)
   - [Connexion par QR Code](#connexion-par-qr-code)
@@ -119,6 +120,110 @@ USER node
 puis `build: .` à la place de `image:` dans le compose. Ou bien
 **désigner un Python existant ailleurs** avec l'option `pythonPath` /
 la variable `MMM_PRONOTEPY_PYTHON` — voir la section suivante.
+
+---
+
+## Installation
+
+### 1. Récupérer le module
+
+```bash
+cd ~/MagicMirror/modules
+git clone https://github.com/Aldarande/MMM-Pronotepy.git
+```
+
+### 2. Installer les dépendances
+
+```bash
+cd ~/MagicMirror/modules/MMM-Pronotepy
+npm install
+```
+
+Le module n'a **aucune dépendance npm**. `npm install` sert uniquement à
+déclencher `postinstall.js`, qui crée un environnement virtuel Python dans
+`.venv/` et y installe **pronotepy**.
+
+Si cette étape échoue — Python absent, `python3-venv` manquant — le reste de
+l'installation se poursuit et vous pouvez la relancer seule :
+
+```bash
+npm run setup
+```
+
+Vérifiez que pronotepy est bien en place :
+
+```bash
+.venv/bin/python -c "import pronotepy; print(pronotepy.__version__)"
+```
+
+### 3. Déclarer le module dans `config.js`
+
+Ouvrez `~/MagicMirror/config/config.js` et ajoutez ce bloc au tableau `modules` :
+
+```javascript
+{
+  module: "MMM-Pronotepy",
+  position: "top_left",
+  config: {
+    updateInterval: "15m"
+  }
+}
+```
+
+C'est la configuration minimale : toutes les autres options ont des valeurs par
+défaut utilisables telles quelles. Voir [Référence de toutes les
+options](#référence-de-toutes-les-options) pour la suite.
+
+### 4. Redémarrer MagicMirror
+
+```bash
+pm2 restart MagicMirror
+```
+
+Ou, sans pm2, en relançant `npm start` depuis le dossier de MagicMirror.
+
+Le module affiche alors un écran de chargement avec le logo Pronote : il n'a pas
+encore de jeton. Passez à la [première connexion](#première-connexion).
+
+---
+
+### Installation sous Docker
+
+Le principe est le même, avec une contrainte : **l'environnement virtuel doit
+être créé dans le conteneur**, car il contient des binaires Linux. Un `.venv`
+construit depuis l'hôte — sous Windows en particulier — serait inutilisable.
+
+Vérifiez d'abord que l'image contient Python : voir [Sous Docker : vérifiez que
+l'image contient Python](#sous-docker--vérifiez-que-limage-contient-python).
+L'image `karsten13/magicmirror:latest` n'en a pas sur PC.
+
+Clonez côté hôte, dans le dossier `modules` monté dans le conteneur :
+
+```bash
+git clone https://github.com/Aldarande/MMM-Pronotepy.git
+```
+
+Puis installez **depuis le conteneur** :
+
+```bash
+docker exec -w /opt/magic_mirror/modules/MMM-Pronotepy magic-mirror npm install
+```
+
+Déclarez le module dans `config.js` comme ci-dessus, puis redémarrez :
+
+```bash
+docker restart magic-mirror
+```
+
+Contrôlez que tout est en place — vous devez lire `Node helper started` puis la
+ligne indiquant l'interpréteur retenu :
+
+```bash
+docker logs --tail 50 magic-mirror 2>&1 | grep MMM-Pronotepy
+```
+
+Remplacez `magic-mirror` par le nom de votre conteneur et
+`/opt/magic_mirror/modules` par le chemin des modules dans votre image.
 
 ---
 
@@ -376,56 +481,6 @@ dire « toute la journée » comme « jamais ») produisent un avertissement au
 démarrage et laissent les mises à jour tourner. Se tromper dans ce sens coûte
 quelques requêtes ; se tromper dans l'autre laisse un miroir figé sans que rien
 ne l'explique.
-
----
-
-## Installation
-
-### 1. Cloner le module
-
-```bash
-cd ~/MagicMirror/modules
-git clone https://github.com/Aldarande/MMM-Pronotepy MMM-Pronotepy
-cd MMM-Pronotepy
-```
-
-### 2. Installer les dépendances
-
-```bash
-npm install
-```
-
-> `npm install` déclenche `postinstall.js`, qui crée un environnement virtuel Python dans `.venv/` et y installe **pronotepy**. Le module n'a aucune dépendance npm.
->
-> Si cette étape échoue (Python absent, `python3-venv` manquant), le reste de l'installation se poursuit et vous pouvez la relancer seule :
->
-> ```bash
-> npm run setup
-> ```
-
-### 3. Ajouter le module à MagicMirror
-
-Ouvrez `~/MagicMirror/config/config.js` et ajoutez ce bloc dans le tableau `modules` :
-
-```javascript
-{
-  module: "MMM-Pronotepy",
-  position: "top_left",
-  config: {
-    updateInterval: "15m"
-  }
-}
-```
-
-### 4. Redémarrer MagicMirror
-
-```bash
-pm2 restart MagicMirror
-# ou
-npm start
-```
-
-Le module affiche un écran de chargement avec le logo Pronote. Vous devez maintenant effectuer la **première connexion**.
 
 ---
 
