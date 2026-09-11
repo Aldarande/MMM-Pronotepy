@@ -17,7 +17,7 @@ Ce fichier est détecté par MMM-Remote-Control, qui l'expose dans son interface
   sélecteur de compte. Migration automatique de l'ancien `cache/tokens.json`
   vers le compte `default`, sans rescan.
 - **Fenêtre de nuit** (`quietHours`, 20:00 → 07:00 par défaut). Suspend les
-  mises à jour périodiques : 44 collectes en moins par jour, donc autant
+  mises à jour périodiques : 11 collectes en moins par jour sur 24, donc autant
   d'authentifications PRONOTE et d'écritures sur la carte SD. La collecte au
   démarrage a lieu quoi qu'il arrive, pour qu'un miroir redémarré la nuit ne
   reste pas vide jusqu'au matin.
@@ -59,6 +59,13 @@ Ce fichier est détecté par MMM-Remote-Control, qui l'expose dans son interface
 
 ### Modifié
 
+- **`updateInterval` passe de 15 min à 60 min par défaut.** Un emploi du temps
+  est publié la veille au soir et ne bouge plus de la journée ; quatre collectes
+  par heure n'apportaient rien et faisaient tourner le jeton d'autant. Combiné à
+  la fenêtre de nuit : 13 collectes par jour au lieu de 52. Le repli de
+  `parseInterval` pour une valeur illisible suit la même valeur, afin qu'un
+  réglage mal orthographié n'interroge pas PRONOTE plus souvent que ce que la
+  documentation annonce.
 - Le pont Python est borné : timeout avec escalade SIGTERM puis SIGKILL, limite
   sur stdout, et `ENOENT` distingué pour donner une consigne actionnable plutôt
   qu'une pile d'appels.

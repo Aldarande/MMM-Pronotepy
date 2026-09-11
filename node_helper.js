@@ -529,7 +529,7 @@ module.exports = NodeHelper.create({
     const fenetre = quietHours.describeWindow(config.quietHours);
     if (fenetre.message) Log.warn(fenetre.message);
 
-    const interval = parseInterval(config.updateInterval || '15m');
+    const interval = parseInterval(config.updateInterval);
     state.timer = setInterval(() => {
       if (quietHours.isQuiet(config.quietHours)) {
         /* Tracé une seule fois par nuit : à quatre réveils par heure,
@@ -549,7 +549,7 @@ module.exports = NodeHelper.create({
     }, interval);
 
     const pause = quietHours.describe(config.quietHours);
-    Log.info(`Instance ${instanceId} — mise à jour toutes les ${config.updateInterval || '15m'}`
+    Log.info(`Instance ${instanceId} — mise à jour toutes les ${config.updateInterval || '60m'}`
            + (pause ? `, pause de nuit ${pause}` : ''));
   },
 

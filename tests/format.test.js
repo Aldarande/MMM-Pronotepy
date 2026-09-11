@@ -16,7 +16,9 @@
 const test   = require('node:test');
 const assert = require('node:assert');
 
-const { formatTime, formatDate, localize, parseInterval } = require('../lib/format');
+const {
+  formatTime, formatDate, localize, parseInterval, DEFAULT_INTERVAL_MS
+} = require('../lib/format');
 
 const FR = 'fr-FR';
 
@@ -160,11 +162,23 @@ test('parseInterval comprend les suffixes', () => {
   assert.strictEqual(parseInterval('1d'), 86400000);
 });
 
-test('une valeur incomprise retombe sur 15 minutes', () => {
+test('une valeur incomprise retombe sur l\'intervalle par défaut', () => {
   /* Un intervalle mal orthographié ne doit pas devenir une boucle de
    * rafraîchissement — chaque cycle fait tourner le jeton Pronote, et
-   * leur accumulation a déjà valu une suspension d'adresse IP. */
-  for (const brut of ['', 'quinze minutes', '15', '15min', null, undefined, '0m', '0s']) {
-    assert.strictEqual(parseInterval(brut), 900000, `« ${brut} » devrait retomber sur 15m`);
+   * leur accumulation a déjà valu une suspension d'adresse IP. Le repli
+   * vaut le défaut du module, et non une valeur plus courte : sinon un
+   * réglage fautif interrogerait Pronote plus souvent que ce que la
+   * documentation annonce. */
+  for (const brut of ['', 'soixante minutes', '60', '60min', null, undefined, '0m', '0s']) {
+    assert.strictEqual(parseInterval(brut), DEFAULT_INTERVAL_MS,
+      `« ${brut} » devrait retomber sur le défaut`);
   }
+});
+
+test('le repli est aligné sur le défaut annoncé par le module', () => {
+  /* Si les deux divergent, la documentation ment sur la fréquence réelle
+   * dès qu'un réglage est mal orthographié. */
+  assert.strictEqual(DEFAULT_INTERVAL_MS, 60 * 60 * 1000);
+  assert.strictEqual(parseInterval('60m'), DEFAULT_INTERVAL_MS);
+  assert.strictEqual(parseInterval('1h'), DEFAULT_INTERVAL_MS);
 });

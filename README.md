@@ -165,7 +165,7 @@ Ouvrez `~/MagicMirror/config/config.js` et ajoutez ce bloc au tableau `modules` 
   module: "MMM-Pronotepy",
   position: "top_left",
   config: {
-    updateInterval: "15m"
+    updateInterval: "60m"
   }
 }
 ```
@@ -339,8 +339,8 @@ accessibles » de `pronote_compat.py` — il a été écrit pour éviter une sus
 d'adresse IP, et il réduit l'usure de la carte par la même occasion. Si vous le
 retirez un jour, les deux problèmes reviennent ensemble.
 
-En ordre de grandeur, à `updateInterval: "15m"`, le module écrit quelques
-centaines de kilo-octets par jour : plusieurs décennies d'endurance sur une
+En ordre de grandeur, à `updateInterval: "60m"`, le module écrit quelques
+dizaines de kilo-octets par jour : plusieurs décennies d'endurance sur une
 carte correcte. **Il n'est pas ce qui tuera votre carte.** Sur un miroir, les
 vrais consommateurs sont ailleurs :
 
@@ -358,9 +358,9 @@ sudo dphys-swapfile swapoff && sudo systemctl disable dphys-swapfile
 ```
 
 Si vous voulez encore réduire la part du module : la [fenêtre de
-nuit](#fenêtre-de-nuit) supprime déjà 44 collectes par jour sur 96, et augmenter
-`updateInterval` à `"30m"` divise le reste par deux — un emploi du temps ne
-change pas toutes les quinze minutes.
+nuit](#fenêtre-de-nuit) supprime déjà 11 collectes par jour sur 24, et allonger
+`updateInterval` — `"2h"`, `"4h"` — divise le reste d'autant. Un emploi du temps
+publié la veille au soir ne bouge plus de la journée.
 
 ---
 
@@ -451,8 +451,8 @@ Trois raisons, toutes mesurables :
 - **Carte SD** — autant d'écritures de jeton en moins, chacune `fsync`ée.
 - **Rien à gagner** — un emploi du temps ne change pas à 3 h du matin.
 
-À `updateInterval: "15m"`, la fenêtre par défaut supprime **44 collectes par
-jour** sur 96.
+À l'intervalle par défaut de 60 min, la fenêtre supprime **11 collectes par
+jour** sur 24 : il en reste 13, entre 07:00 et 20:00.
 
 ### Ce que la fenêtre ne fait pas
 
@@ -717,7 +717,7 @@ Si vous avez un compte **parent** avec **plusieurs enfants**, la page de configu
     // ── Global ─────────────────────────────────────────────────────
     debug:          false,     // true = logs détaillés dans la console
     language:       null,      // null = reprend config.language de MagicMirror (recommandé)
-    updateInterval: "15m",     // fréquence de mise à jour : "30s", "5m", "1h", "1d"
+    updateInterval: "60m",     // fréquence de mise à jour : "30s", "5m", "1h", "1d"
     account:        null,      // compte Pronote (jeu de jetons) ; null = "default"
                                // voir « Plusieurs comptes Pronote »
     childName:      null,      // null = premier enfant du token ; "Hugo" = enfant ciblé
@@ -848,7 +848,7 @@ Homeworks: {
   position: "top_left",
   config: {
     childName:      "Hugo",
-    updateInterval: "15m",
+    updateInterval: "60m",
     Header: {
       displayEstablishmentName: false,
       displayStudentName:       true,
@@ -869,7 +869,7 @@ Homeworks: {
   position: "top_center",
   config: {
     childName:      "Alice",
-    updateInterval: "15m",
+    updateInterval: "60m",
     Header: {
       displayEstablishmentName: false,
       displayStudentName:       true,
@@ -946,7 +946,7 @@ Deux mécanismes en découlent, tous deux repris du plugin ProJote où ils ont �
 ### Rotation automatique
 
 ```
-Cycle de mise à jour (ex. toutes les 15 min)
+Cycle de mise à jour (par défaut : toutes les 60 min)
         │
         ▼
   token_login(primary) → Pronote retourne un NOUVEAU token

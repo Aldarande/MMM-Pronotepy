@@ -583,7 +583,7 @@
           <option value="fullscreen_below">fullscreen_below</option>
         </select>
         <label>Intervalle de mise a jour</label>
-        <input type="text" id="cfg-interval" value="15m" placeholder="ex: 15m ou 1h" />
+        <input type="text" id="cfg-interval" value="60m" placeholder="ex: 60m ou 1h" />
       </div>
 
       <!-- En-tete -->
@@ -1280,7 +1280,7 @@ function strVal (id, fallback) {
 document.getElementById('btn-generate').addEventListener('click', () => {
   const childName = strVal('cfg-childName', '');
   const position  = strVal('cfg-position', 'top_left');
-  const interval  = strVal('cfg-interval', '15m');
+  const interval  = strVal('cfg-interval', '60m');
   const header    = document.getElementById('cfg-childName').value || childName || 'Pronote';
 
   const b = (id) => boolVal(id);

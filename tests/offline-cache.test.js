@@ -130,7 +130,7 @@ test('parseMaxAge comprend les suffixes', () => {
 });
 
 test('les formes de désactivation rendent 0', () => {
-  /* Contrairement à parseInterval, qui retombe sur 15 min : ici une
+  /* Contrairement à parseInterval, qui retombe sur 60 min : ici une
    * valeur vide veut dire « désactivé », pas « six heures ». */
   for (const valeur of [null, undefined, false, 0, '0', '', '   ', 'false', 'off', 'jamais', '6']) {
     assert.strictEqual(cache.parseMaxAge(valeur), 0, `« ${valeur} » devrait désactiver`);

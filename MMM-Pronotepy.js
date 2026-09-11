@@ -15,7 +15,10 @@ Module.register('MMM-Pronotepy', {
   defaults: {
     debug: false,
     language: null,           // null = utilise config.language de MagicMirror
-    updateInterval: '15m',
+    /* Un emploi du temps ne change pas toutes les quinze minutes, et
+     * chaque collecte fait tourner le jeton Pronote — leur accumulation
+     * a déjà valu une suspension d'adresse IP. Accepte « 30s » à « 1d ». */
+    updateInterval: '60m',
     /* Compte Pronote utilisé par cette instance. Étiquette libre : elle
      * désigne un jeu de jetons (cache/tokens-<compte>.json), donc un
      * compte Pronote distinct.
