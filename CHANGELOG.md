@@ -5,17 +5,10 @@ Toutes les évolutions notables de MMM-Pronotepy.
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Ce fichier est détecté par MMM-Remote-Control, qui l'expose dans son interface.
 
-## [Non publié]
+## [1.1.0] — 2026-09-12
 
 ### Ajouté
 
-- **Plusieurs comptes Pronote.** Un compte parent ne couvre pas toujours toute
-  la fratrie : un enfant peut dépendre d'un autre établissement, ou avoir son
-  propre compte élève. L'option `account` désigne un jeu de jetons
-  (`cache/tokens-<compte>.json`) ; elle se combine avec `childName`, qui choisit
-  un enfant *dans* un compte parent. La page de configuration porte un
-  sélecteur de compte. Migration automatique de l'ancien `cache/tokens.json`
-  vers le compte `default`, sans rescan.
 - **Garde-fous contre une suspension d'adresse IP par PRONOTE.** Le danger ne
   venait pas de `updateInterval` mais des collectes hors minuteur : un
   rechargement de la page du miroir renvoyait `SET_CONFIG` et déclenchait une
@@ -27,6 +20,36 @@ Ce fichier est détecté par MMM-Remote-Control, qui l'expose dans son interface
   protégerait pas du redémarrage en boucle. Nouveau `kind` d'erreur
   `ip_suspended`, distinct de `network` — c'est la seule erreur que réessayer
   aggrave.
+
+### Modifié
+
+- **`updateInterval` passe de 15 min à 60 min par défaut.** Un emploi du temps
+  est publié la veille au soir et ne bouge plus de la journée ; quatre collectes
+  par heure n'apportaient rien et faisaient tourner le jeton d'autant. Combiné à
+  la fenêtre de nuit : 13 collectes par jour au lieu de 52. Le repli de
+  `parseInterval` pour une valeur illisible suit la même valeur, afin qu'un
+  réglage mal orthographié n'interroge pas PRONOTE plus souvent que ce que la
+  documentation annonce.
+- La procédure d'installation remonte juste après les prérequis. Elle existait,
+  mais derrière cinq sections de référence : un lecteur qui vient d'arriver ne la
+  trouvait pas. Ajout d'un volet Docker, avec la contrainte qui coûte le plus de
+  temps quand on l'ignore — le venv doit être créé DANS le conteneur.
+
+## [1.0.0] — 2026-09-08
+
+Première publication. Portage de MMM-Pawmote sur `pronotepy`, avec un pont
+Python à la place de Pawnote. Le travail antérieur au 2026-09-08 n'a jamais été
+distribué : il est intégralement décrit ici.
+
+### Ajouté
+
+- **Plusieurs comptes Pronote.** Un compte parent ne couvre pas toujours toute
+  la fratrie : un enfant peut dépendre d'un autre établissement, ou avoir son
+  propre compte élève. L'option `account` désigne un jeu de jetons
+  (`cache/tokens-<compte>.json`) ; elle se combine avec `childName`, qui choisit
+  un enfant *dans* un compte parent. La page de configuration porte un
+  sélecteur de compte. Migration automatique de l'ancien `cache/tokens.json`
+  vers le compte `default`, sans rescan.
 - **Fenêtre de nuit** (`quietHours`, 20:00 → 07:00 par défaut). Suspend les
   mises à jour périodiques : 11 collectes en moins par jour sur 24, donc autant
   d'authentifications PRONOTE et d'écritures sur la carte SD. La collecte au
@@ -70,13 +93,6 @@ Ce fichier est détecté par MMM-Remote-Control, qui l'expose dans son interface
 
 ### Modifié
 
-- **`updateInterval` passe de 15 min à 60 min par défaut.** Un emploi du temps
-  est publié la veille au soir et ne bouge plus de la journée ; quatre collectes
-  par heure n'apportaient rien et faisaient tourner le jeton d'autant. Combiné à
-  la fenêtre de nuit : 13 collectes par jour au lieu de 52. Le repli de
-  `parseInterval` pour une valeur illisible suit la même valeur, afin qu'un
-  réglage mal orthographié n'interroge pas PRONOTE plus souvent que ce que la
-  documentation annonce.
 - Le pont Python est borné : timeout avec escalade SIGTERM puis SIGKILL, limite
   sur stdout, et `ENOENT` distingué pour donner une consigne actionnable plutôt
   qu'une pile d'appels.
@@ -84,8 +100,3 @@ Ce fichier est détecté par MMM-Remote-Control, qui l'expose dans son interface
   l'identique — les nuits, week-ends et vacances produisent la même charge
   utile, et réécrire use la carte SD sans contrepartie.
 - La logique pure vit dans `lib/`, testable hors du runtime MagicMirror.
-
-## [1.0.0] — 2026-09-03
-
-- Première version : portage de MMM-Pawmote sur `pronotepy`, avec un pont
-  Python à la place de Pawnote.
