@@ -688,6 +688,14 @@ class AuthRefused(Exception):
 # Un incident réseau ou un serveur momentanément fermé n'invalide pas le jeton :
 # rejouer avec le jeton de secours ne servirait à rien et brûlerait la réserve.
 # Cas vécu : « Your IP address is suspended. » après trop de connexions.
+# PRONOTE annonce la sanction en clair. On reste large : le libellé exact a
+# déjà changé, et un faux positif ne coûte qu'une pause de trop.
+_SUSPENSION_RE = re.compile(
+    r"(ip\s*address\s*is\s*suspended|adresse\s*ip\s*.{0,20}suspendue"
+    r"|trop\s*de\s*(tentatives|connexions)|too\s*many\s*(attempts|requests))",
+    re.IGNORECASE,
+)
+
 _TRANSIENT_MARKERS = (
     "suspended", "suspendue", "timeout", "timed out", "connection",
     "unreachable", "unavailable", "indisponible", "momentan",
@@ -754,6 +762,13 @@ def classify(exc):
             or "page html is different than expected" in message
             or "unable to connect to pronote" in message):
         return "outdated"
+    # Une suspension d'IP se distingue d'un incident réseau ordinaire : c'est
+    # la seule erreur que RÉESSAYER AGGRAVE. Node s'en sert pour geler les
+    # collectes plusieurs heures (lib/rate-limit.js) au lieu de retenter au
+    # cycle suivant. Cas vécu sur ProJote, qui a valu une suspension de toute
+    # l'adresse du foyer.
+    if _SUSPENSION_RE.search(message):
+        return "ip_suspended"
     if any(marker in message for marker in _TRANSIENT_MARKERS):
         return "network"
     if "Timeout" in name or "Connection" in name or "SSL" in name:

@@ -16,6 +16,17 @@ Ce fichier est détecté par MMM-Remote-Control, qui l'expose dans son interface
   un enfant *dans* un compte parent. La page de configuration porte un
   sélecteur de compte. Migration automatique de l'ancien `cache/tokens.json`
   vers le compte `default`, sans rescan.
+- **Garde-fous contre une suspension d'adresse IP par PRONOTE.** Le danger ne
+  venait pas de `updateInterval` mais des collectes hors minuteur : un
+  rechargement de la page du miroir renvoyait `SET_CONFIG` et déclenchait une
+  authentification immédiate — vingt rafraîchissements en faisaient vingt —, et
+  un redémarrage en boucle rejouait la collecte de démarrage chaque minute.
+  Désormais un plancher de 5 min entre tentatives, un recul croissant après
+  échec, un gel de 6 h si PRONOTE annonce la suspension, et un plafond
+  quotidien par compte. L'état est persisté : un compteur en mémoire ne
+  protégerait pas du redémarrage en boucle. Nouveau `kind` d'erreur
+  `ip_suspended`, distinct de `network` — c'est la seule erreur que réessayer
+  aggrave.
 - **Fenêtre de nuit** (`quietHours`, 20:00 → 07:00 par défaut). Suspend les
   mises à jour périodiques : 11 collectes en moins par jour sur 24, donc autant
   d'authentifications PRONOTE et d'écritures sur la carte SD. La collecte au

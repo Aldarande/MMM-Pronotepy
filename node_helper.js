@@ -23,6 +23,7 @@
      • lib/offline-cache.js   dernière collecte, pour survivre aux coupures
      • lib/quiet-hours.js     fenêtre de nuit, pour cesser d'interroger Pronote
      • lib/accounts.js        plusieurs comptes Pronote sur un même miroir
+     • lib/rate-limit.js      garde-fous contre une suspension d'IP
    ===================================================================== */
 
 const NodeHelper = require('node_helper');
@@ -37,6 +38,7 @@ const { resolvePython }                 = require('./lib/python');
 const offlineCache                      = require('./lib/offline-cache');
 const quietHours                        = require('./lib/quiet-hours');
 const accounts                          = require('./lib/accounts');
+const rateLimit                         = require('./lib/rate-limit');
 
 const MODULE_NAME = 'MMM-Pronotepy';
 const CACHE_DIR   = path.join(__dirname, 'cache');
@@ -186,6 +188,24 @@ module.exports = NodeHelper.create({
     if (state.mode === this._authMode) return;
     this._authMode = state.mode;
     (state.level === 'warn' ? Log.warn : Log.info)(state.message);
+  },
+
+  /* Consigne le résultat d'une collecte dans le budget du compte.
+   * Un succès efface le recul accumulé ; un échec l'aggrave, et une
+   * suspension annoncée par PRONOTE gèle les tentatives plusieurs heures
+   * — c'est la seule erreur que réessayer aggrave objectivement. */
+  _recordOutcome (state, outcome) {
+    const compte = accounts.normalize((state.config || {}).account);
+    const avant  = rateLimit.load(CACHE_DIR, compte);
+    const apres  = rateLimit.afterOutcome(avant, undefined, outcome,
+                                          (state.config || {}).rateLimit);
+    rateLimit.save(CACHE_DIR, compte, apres);
+
+    if (outcome && outcome.kind === 'ip_suspended') {
+      Log.warn(`Compte « ${compte} » — PRONOTE signale une suspension d'adresse IP. `
+             + `Collectes gelées jusqu'à ${new Date(apres.suspendedUntil).toLocaleString()}. `
+             + 'Ne relancez pas le module dans l\'intervalle : chaque tentative prolonge la sanction.');
+    }
   },
 
   /* ── Interpréteur Python ─────────────────────────────────────────── */
@@ -406,10 +426,42 @@ module.exports = NodeHelper.create({
   },
 
   /* ── Connexion + collecte (par instance) ─────────────────────────── */
-  async _connectAndFetch (instanceId) {
+  async _connectAndFetch (instanceId, options) {
     const state = this.instances.get(instanceId);
     if (!state) return;
     if (state.isConnecting) { Log.log(`Instance ${instanceId} — collecte déjà en cours`); return; }
+
+    /* ── Garde-fou anti-suspension ────────────────────────────────────
+     * TOUTES les collectes passent ici : le minuteur, le démarrage, une
+     * reconfiguration, un scan de QR Code. C'est délibéré — les rafales
+     * dangereuses ne viennent pas du minuteur mais des autres chemins :
+     * un rechargement de la page du miroir renvoie SET_CONFIG, un
+     * redémarrage en boucle rejoue le démarrage toutes les minutes.
+     * Voir lib/rate-limit.js. */
+    const compteLimite = accounts.normalize((state.config || {}).account);
+    const budget       = rateLimit.load(CACHE_DIR, compteLimite);
+    const verdict      = rateLimit.evaluate(budget, (state.config || {}).rateLimit);
+
+    if (!verdict.allowed) {
+      /* Un blocage n'est pas une erreur à afficher : les données en place
+       * restent valables. On trace, et on laisse l'écran tel quel. */
+      const cle = `${compteLimite}:${verdict.reason}`;
+      if (state.lastBlock !== cle) {
+        state.lastBlock = cle;
+        const dire = verdict.reason === 'suspended' ? Log.warn : Log.info;
+        dire(`Instance ${instanceId} — collecte différée (${verdict.reason}) : ${verdict.message}`);
+      }
+      return;
+    }
+    state.lastBlock = null;
+
+    if (!rateLimit.save(CACHE_DIR, compteLimite, rateLimit.afterAttempt(budget))) {
+      /* Sans persistance, le garde-fou ne survit pas à un redémarrage —
+       * c'est-à-dire au scénario contre lequel il existe. */
+      Log.warn(`Compteur anti-suspension non persisté pour « ${compteLimite} » : `
+             + 'un redémarrage en boucle ne serait plus freiné.');
+    }
+
     state.isConnecting = true;
 
     const notify = (notif, payload) =>
@@ -430,6 +482,7 @@ module.exports = NodeHelper.create({
 
       state.isConnected = true;
       state.lastError   = null;
+      this._recordOutcome(state, { ok: true });
       offlineCache.save(CACHE_DIR, accounts.offlineKey(compte, cfg.childName), raw);
       notify('PRONOTE_UPDATED', { ...localize(raw, cfg.language || 'fr-FR'), stale: null });
 
@@ -438,6 +491,7 @@ module.exports = NodeHelper.create({
       Log.error(`Instance ${instanceId} — ${kind} :`, e.message);
       state.isConnected = false;
       state.lastError   = e.message;
+      this._recordOutcome(state, { ok: false, kind });
 
       /* Plutôt que de vider l'écran, on rejoue la dernière collecte —
        * mais seulement tant qu'elle décrit encore le jour en cours (cf.

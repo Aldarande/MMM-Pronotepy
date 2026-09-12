@@ -556,7 +556,10 @@ class TestClassify:
         ("non-hexadecimal number found in fromhex()", "bad_qr"),
         ("Page HTML is different than expected", "outdated"),
         ("Unable to connect to Pronote", "outdated"),
-        ("Your IP address is suspended.", "network"),
+        # « suspended » était classé « network » : l'erreur était donc
+        # retentée au cycle suivant, ce qui prolonge la sanction. Elle a
+        # désormais son propre kind — voir TestClassify plus bas.
+        ("Your IP address is suspended.", "ip_suspended"),
         ("connection timed out", "network"),
         ("Service momentanément indisponible", "network"),
     ])
@@ -575,6 +578,35 @@ class TestClassify:
         « Erreur : 'dataSec' » au lieu de « rescannez un QR Code »."""
         assert bridge.classify(KeyError("dataSec")) == "auth_failed"
         assert bridge.classify(KeyError("donneesSec")) == "auth_failed"
+
+    @pytest.mark.parametrize("message", [
+        "Your IP address is suspended.",
+        "your ip address is suspended",
+        "Votre adresse IP a ete suspendue",
+        "Too many attempts",
+        "too many requests, retry later",
+        "Trop de tentatives de connexion",
+    ])
+    def test_suspension_distinguee_d_un_incident_reseau(self, bridge, message):
+        """C'est la seule erreur que REESSAYER AGGRAVE.
+
+        Classee « network » comme les autres, elle etait retentee au cycle
+        suivant — ce qui prolonge la sanction. Node s'appuie sur ce kind pour
+        geler les collectes plusieurs heures (lib/rate-limit.js).
+        """
+        assert bridge.classify(Exception(message)) == "ip_suspended"
+
+    def test_un_incident_reseau_ordinaire_reste_network(self, bridge):
+        """Le gel de plusieurs heures ne doit pas se declencher sur une
+        coupure de box : ce serait une panne de six heures pour rien."""
+        for message in ("Connection timed out", "Service momentanement indisponible",
+                        "network unreachable"):
+            assert bridge.classify(Exception(message)) == "network"
+
+    def test_une_suspension_ne_consomme_pas_le_secours(self, bridge):
+        """Le jeton n'est pas en cause : bruler la reserve ne servirait a
+        rien, et ferait une authentification de plus."""
+        assert bridge.is_token_error(Exception("Your IP address is suspended.")) is False
 
     def test_no_tokens(self, bridge):
         assert bridge.classify(bridge.NoTokens()) == "no_tokens"

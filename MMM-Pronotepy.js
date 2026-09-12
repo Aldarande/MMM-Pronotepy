@@ -80,6 +80,19 @@ Module.register('MMM-Pronotepy', {
      * null, false ou { enabled: false } désactivent la pause. */
     quietHours: { from: '20:00', until: '07:00' },
 
+    /* Garde-fous contre une suspension d'adresse IP par PRONOTE.
+     * Ils s'appliquent à TOUTES les collectes, y compris celles
+     * déclenchées par un rechargement de la page du miroir ou par un
+     * redémarrage — ce sont elles qui font les rafales, pas le minuteur.
+     * L'état est persisté par compte : un compteur en mémoire ne
+     * protégerait pas d'un redémarrage en boucle, qui est le scénario le
+     * plus dangereux. Ne relevez ces valeurs qu'en connaissance de cause.
+     *   minIntervalMs        plancher entre deux tentatives
+     *   backoffBaseMs/MaxMs  recul croissant après un échec
+     *   suspensionCooldownMs gel si PRONOTE annonce la suspension
+     *   dailyMaxAttempts     plafond par compte et par jour */
+    rateLimit: null,
+
     Header: {
       displayEstablishmentName: true,
       displayStudentName: true,

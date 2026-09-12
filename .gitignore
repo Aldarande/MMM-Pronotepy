@@ -10,3 +10,4 @@ __pycache__/
 .pytest_cache/
 cache/last-*.json
 cache/tokens-*.json
+cache/rate-*.json

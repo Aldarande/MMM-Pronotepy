@@ -17,6 +17,7 @@ Le module est en deux morceaux : un **pont Python** (`pronote_bridge.py`) qui pa
 - [Hors ligne](#hors-ligne)
 - [Plusieurs comptes Pronote](#plusieurs-comptes-pronote)
 - [Fenêtre de nuit](#fenêtre-de-nuit)
+- [Ne pas se faire suspendre par PRONOTE](#ne-pas-se-faire-suspendre-par-pronote)
 - [Sécurité — clé d'API](#sécurité--clé-dapi)
 - [Première connexion](#première-connexion)
   - [Connexion par QR Code](#connexion-par-qr-code)
@@ -481,6 +482,80 @@ dire « toute la journée » comme « jamais ») produisent un avertissement au
 démarrage et laissent les mises à jour tourner. Se tromper dans ce sens coûte
 quelques requêtes ; se tromper dans l'autre laisse un miroir figé sans que rien
 ne l'explique.
+
+---
+
+## Ne pas se faire suspendre par PRONOTE
+
+PRONOTE suspend l'adresse IP au-delà d'un certain rythme d'authentifications, et
+répond alors « *Your IP address is suspended.* » à **tout le foyer**. La sanction
+a été subie en production sur le plugin ProJote, du même auteur.
+
+Chaque connexion compte : le jeton est renouvelé à chaque fois, ce n'est pas une
+session réutilisée.
+
+### Ce qui s'emballe n'est pas le minuteur
+
+`updateInterval` est la partie visible, et la moins dangereuse. Les rafales
+viennent d'ailleurs :
+
+| Chemin | Ce qu'il produisait |
+|---|---|
+| **Rechargement de la page du miroir** | MagicMirror émet `ALL_MODULES_STARTED` à chaque connexion d'un client ; le module renvoyait `SET_CONFIG` et déclenchait une collecte immédiate. **20 rafraîchissements = 20 authentifications.** |
+| **Redémarrage en boucle** | Une erreur de syntaxe dans `config.js` fait redémarrer MagicMirror toutes les 60 s ; chaque démarrage déclenchait sa collecte. |
+| **`updateInterval` très court** | Saisi par erreur, ou hérité d'un exemple. |
+| **Échec persistant** | Réessayer au même rythme un serveur qui refuse prolonge le refus. |
+
+### Les garde-fous
+
+Ils s'appliquent à **toutes** les collectes — minuteur, démarrage,
+reconfiguration, scan de QR Code — et l'état est tenu **par compte**, puisque
+c'est le compte que PRONOTE voit.
+
+| Garde-fou | Défaut | Rôle |
+|---|---|---|
+| Plancher entre deux tentatives | 5 min | écrase les rafales de rechargement |
+| Recul après échec | 5 → 10 → 20 min… plafonné à 6 h | n'insiste pas face à un refus |
+| Gel sur suspension annoncée | 6 h | la seule erreur que réessayer aggrave |
+| Plafond quotidien par compte | 60 | filet de dernier recours |
+
+**L'état est persisté** dans `cache/rate-<compte>.json`. Ce n'est pas un détail :
+un compteur en mémoire serait remis à zéro à chaque redémarrage, c'est-à-dire
+précisément dans le scénario le plus dangereux.
+
+Un blocage n'est **pas** affiché comme une erreur : les données en place restent
+valables, l'écran ne change pas, et la raison est tracée dans les logs.
+
+### Régler les bornes
+
+```js
+config: {
+  rateLimit: {
+    minIntervalMs:        5 * 60000,
+    backoffBaseMs:        5 * 60000,
+    backoffMaxMs:         6 * 3600000,
+    suspensionCooldownMs: 6 * 3600000,
+    dailyMaxAttempts:     60
+  }
+}
+```
+
+`null` garde les défauts, et un réglage partiel ne remplace que les clés
+fournies. Les abaisser vous expose ; les relever est sans risque.
+
+### Si la suspension est déjà là
+
+Le module l'annonce dans les logs et gèle les collectes six heures :
+
+```
+Compte « default » — PRONOTE signale une suspension d'adresse IP.
+Collectes gelées jusqu'à … Ne relancez pas le module dans l'intervalle :
+chaque tentative prolonge la sanction.
+```
+
+Ne redémarrez pas MagicMirror pour « voir si ça remarche » — c'est ce qui
+entretient la sanction. Attendez, ou supprimez `cache/rate-<compte>.json` en
+sachant exactement ce que vous faites.
 
 ---
 
@@ -1075,7 +1150,8 @@ MMM-Pronotepy/
 │   ├── python.js            # Choix de l'interpréteur Python
 │   ├── offline-cache.js     # Dernière collecte, pour survivre aux coupures
 │   ├── quiet-hours.js       # Fenêtre de nuit
-│   └── accounts.js          # Plusieurs comptes Pronote
+│   ├── accounts.js          # Plusieurs comptes Pronote
+│   └── rate-limit.js        # Garde-fous anti-suspension d'IP
 ├── tests/                   # Suites Node et Python (aucun réseau)
 │   ├── conftest.py          # Faux pronotepy + doubles du domaine
 │   ├── test_bridge.py
@@ -1088,6 +1164,7 @@ MMM-Pronotepy/
 │   ├── offline-cache.test.js
 │   ├── quiet-hours.test.js
 │   ├── accounts.test.js
+│   ├── rate-limit.test.js
 │   ├── test_accounts.py
 │   └── helpers/             # Faux ponts Python (timeout, crash, flood…)
 ├── config-page/
@@ -1147,6 +1224,8 @@ Ce que les suites couvrent en particulier :
 | La fenêtre de nuit franchit minuit correctement | `tests/quiet-hours.test.js` |
 | Node et le pont Python nomment les comptes pareil | `tests/test_accounts.py` |
 | Supprimer un compte ne touche pas les autres | `tests/accounts.test.js` |
+| 20 rechargements de page = 1 seule authentification | `tests/rate-limit.test.js` |
+| Une suspension gèle les collectes, un succès la lève | `tests/rate-limit.test.js` |
 
 ---
 
