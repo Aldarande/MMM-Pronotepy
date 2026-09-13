@@ -5,6 +5,33 @@ Toutes les évolutions notables de MMM-Pronotepy.
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Ce fichier est détecté par MMM-Remote-Control, qui l'expose dans son interface.
 
+## [Non publié]
+
+### Ajouté
+
+- **Horaires d'affichage distincts pour l'emploi du temps du jour et celui du
+  lendemain.** `Timetable.today` et `Timetable.nextDay` acceptent leurs propres
+  `showFrom` / `showUntil` — ou `showRanges` — de quoi n'afficher qu'un emploi
+  du temps à la fois. Un sous-bloc restreint la fenêtre de la section sans
+  jamais l'élargir ; absents, les sous-blocs la suivent, donc rien ne change
+  pour une configuration existante.
+
+### Corrigé
+
+- **Le bouton « Copier » de la page de configuration ne faisait rien.**
+  `navigator.clipboard` n'existe qu'en contexte sécurisé — HTTPS ou localhost —
+  or la page se consulte le plus souvent depuis un téléphone sur
+  `http://<ip-du-miroir>:8080`. L'appel levait un `TypeError` immédiat, sans
+  `.catch` : échec parfaitement silencieux. Repli sur
+  `document.execCommand('copy')`, qui fonctionne hors contexte sécurisé, et
+  sélection du texte en dernier recours plutôt qu'un bouton muet.
+- **Le bouton « Coller une image » ne pouvait pas fonctionner sous Firefox.**
+  Il reposait sur `navigator.clipboard.read()`, que Firefox n'expose pas aux
+  pages web même en contexte sécurisé. Le bouton tente désormais l'API quand
+  elle existe et, sinon, invite au raccourci Ctrl+V en mettant la zone de dépôt
+  en évidence. Le collage accepte aussi `clipboardData.files`, utilisé selon la
+  provenance de l'image.
+
 ## [1.1.1] — 2026-09-13
 
 ### Corrigé

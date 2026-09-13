@@ -928,6 +928,35 @@ Homeworks: {
 
 ---
 
+#### Horaires distincts pour aujourd'hui et demain
+
+`Timetable.today` et `Timetable.nextDay` acceptent leurs propres horaires. De
+quoi n'afficher qu'un emploi du temps à la fois : celui du jour le matin, celui
+du lendemain le soir.
+
+```js
+Timetable: {
+  display: true,
+  displayToday: true,
+  displayNextDay: true,
+  today:   { showFrom: "06:00", showUntil: "14:00" },
+  nextDay: { showFrom: "17:00", showUntil: "23:59" }
+}
+```
+
+Ils acceptent la même grammaire que les sections : `showFrom` / `showUntil`, ou
+`showRanges: [{ from, until }, …]` pour plusieurs tranches.
+
+Deux règles à retenir :
+
+- **Un sous-bloc restreint, il n'élargit jamais.** La fenêtre de la section
+  (`Timetable.showFrom` / `showUntil`) reste souveraine — sinon un réglage de
+  sous-bloc pourrait rallumer une section explicitement éteinte.
+- **Absents, les sous-blocs suivent la section.** C'est la valeur par défaut
+  (`null`) : une configuration existante ne change pas de comportement.
+
+---
+
 ### Exemples de configurations
 
 #### Compte parent — deux enfants

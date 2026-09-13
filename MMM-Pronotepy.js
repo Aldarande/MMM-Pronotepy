@@ -108,8 +108,22 @@ Module.register('MMM-Pronotepy', {
       displayRoom: true,
       showOnlyFuture: false,  // n'affiche que les cours à venir
       showHolidays: false,    // remplace "Aujourd'hui" par un bloc vacances + countdown
+
+      /* Fenêtre de la section entière. */
       showFrom: '00:00',
-      showUntil: '23:59'
+      showUntil: '23:59',
+
+      /* Fenêtres propres à chaque sous-bloc, facultatives. Elles
+       * RESTREIGNENT la fenêtre de section, elles ne l'élargissent pas.
+       * Absentes (null), le sous-bloc suit la section — comportement
+       * d'origine.
+       * Usage typique : la journée en cours le matin, celle du lendemain
+       * le soir, pour ne pas afficher deux emplois du temps à la fois.
+       *   today:   { showFrom: '06:00', showUntil: '14:00' },
+       *   nextDay: { showFrom: '17:00', showUntil: '23:59' }
+       * Acceptent aussi showRanges: [{ from, until }, ...]. */
+      today: null,
+      nextDay: null
     },
 
     Homeworks: {
@@ -220,12 +234,15 @@ Module.register('MMM-Pronotepy', {
     const ttVis      = vis.Timetable;
     const hasToday   = (this.userData.timetableToday || []).length > 0;
 
-    /* Aujourd'hui : affiché si displayToday ET (cours présents OU showHolidays activé) */
+    /* Aujourd'hui : displayToday, sa propre fenêtre horaire si elle
+       existe, ET (cours présents OU showHolidays activé) */
     const showToday   = !!(ttVis && this.config.Timetable.displayToday
+                           && this._isSubVisible(this.config.Timetable, 'today')
                            && (hasToday || this.config.Timetable.showHolidays));
 
-    /* Prochain jour : affiché si displayNextDay ET des données sont disponibles */
+    /* Prochain jour : displayNextDay, sa propre fenêtre, et des données */
     const showNextDay = !!(ttVis && this.config.Timetable.displayNextDay
+                           && this._isSubVisible(this.config.Timetable, 'nextDay')
                            && this.userData.timetableNextDay);
 
     const homeworks    = this.userData.homeworks || [];
@@ -318,21 +335,47 @@ Module.register('MMM-Pronotepy', {
   },
 
   /* ── Visibilité horaire ─────────────────────────────────────────── */
-  _isVisible (sectionCfg) {
-    if (!sectionCfg || !sectionCfg.display) return false;
-    const now  = new Date();
-    const hhmm = now.getHours().toString().padStart(2, '0') + ':' +
-                 now.getMinutes().toString().padStart(2, '0');
+  /* Sommes-nous dans la fenêtre horaire décrite par ce bloc ?
+   * Ne regarde QUE les horaires — pas le drapeau `display`. Séparer les
+   * deux permet d'appliquer la même grammaire (`showFrom`/`showUntil` ou
+   * `showRanges`) à une section entière comme à un sous-bloc, qui a son
+   * propre drapeau (`displayToday`, `displayNextDay`). */
+  _inWindow (cfg, now) {
+    if (!cfg) return true;
+    const t    = now || new Date();
+    const hhmm = t.getHours().toString().padStart(2, '0') + ':' +
+                 t.getMinutes().toString().padStart(2, '0');
 
     /* Plusieurs tranches : showRanges: [{ from, until }, ...] */
-    if (Array.isArray(sectionCfg.showRanges) && sectionCfg.showRanges.length > 0) {
-      return sectionCfg.showRanges.some(r => hhmm >= (r.from || '00:00') && hhmm <= (r.until || '23:59'));
+    if (Array.isArray(cfg.showRanges) && cfg.showRanges.length > 0) {
+      return cfg.showRanges.some(r => hhmm >= (r.from || '00:00') && hhmm <= (r.until || '23:59'));
     }
 
     /* Tranche unique (rétrocompatibilité) : showFrom / showUntil */
-    const from  = sectionCfg.showFrom  || '00:00';
-    const until = sectionCfg.showUntil || '23:59';
+    const from  = cfg.showFrom  || '00:00';
+    const until = cfg.showUntil || '23:59';
     return hhmm >= from && hhmm <= until;
+  },
+
+  _isVisible (sectionCfg, now) {
+    if (!sectionCfg || !sectionCfg.display) return false;
+    return this._inWindow(sectionCfg, now);
+  },
+
+  /* Fenêtre d'un sous-bloc de l'emploi du temps.
+   *
+   * `Timetable.today` et `Timetable.nextDay` peuvent porter leurs propres
+   * horaires — afficher la journée en cours le matin, celle du lendemain
+   * le soir. En leur absence, le sous-bloc hérite de la fenêtre de la
+   * section, ce qui préserve le comportement d'avant.
+   *
+   * Un sous-bloc RESTREINT, il n'élargit pas : la fenêtre de section
+   * reste souveraine. Sans cela, un réglage de sous-bloc pourrait
+   * rallumer une section que l'on a explicitement éteinte. */
+  _isSubVisible (sectionCfg, sousBloc, now) {
+    if (!this._isVisible(sectionCfg, now)) return false;
+    const cfg = sectionCfg && sectionCfg[sousBloc];
+    return cfg ? this._inWindow(cfg, now) : true;
   },
 
   /* ── Notifications MagicMirror ──────────────────────────────────── */

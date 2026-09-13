@@ -371,6 +371,13 @@
     .account-hint code {
       background: var(--accent); padding: 1px 5px; border-radius: 4px;
     }
+    /* Zone en attente d'un Ctrl+V */
+    .qr-drop--attente {
+      border-color: var(--ok, #4caf50) !important;
+      box-shadow: 0 0 0 3px rgba(76, 175, 80, .18);
+      animation: qr-pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes qr-pulse { 50% { box-shadow: 0 0 0 8px rgba(76, 175, 80, 0); } }
   </style>
 </head>
 <body>
@@ -497,7 +504,7 @@
             </div>
             <canvas id="qr-decode-canvas" style="display:none"></canvas>
           </div>
-          <button id="btn-paste-image" class="btn-secondary" style="margin-top:10px">📋 Coller une image (Ctrl+V)</button>
+          <button id="btn-paste-image" class="btn-secondary" style="margin-top:10px" title="Selon le navigateur, la lecture directe du presse-papier peut etre refusee : le raccourci Ctrl+V fonctionne toujours">📋 Coller une image (ou Ctrl+V)</button>
           <div id="image-status" style="display:none" class="status-box"></div>
         </div>
 
@@ -1060,6 +1067,58 @@ document.getElementById('btn-clear').addEventListener('click', async () => {
 /* ══════════════════════════════════════════════════════════════════════
    HELPERS
    ══════════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════════
+   PRESSE-PAPIER
+
+   navigator.clipboard n'existe QUE dans un contexte securise : HTTPS, ou
+   localhost. Or cette page se consulte le plus souvent depuis un
+   telephone, sur http://<ip-du-miroir>:8080 — contexte NON securise, ou
+   `navigator.clipboard` vaut `undefined`. L'appeler y leve un TypeError
+   immediat ; sans .catch, le bouton ne faisait donc rien du tout, sans
+   le moindre message. C'etait le cas du bouton « Copier ».
+
+   document.execCommand('copy') est deprecie mais reste implemente
+   partout, y compris hors contexte securise. C'est le seul repli qui
+   fonctionne ici.
+   ══════════════════════════════════════════════════════════════════════ */
+async function copierTexte (texte) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    try { await navigator.clipboard.writeText(texte); return true; }
+    catch { /* refus de permission : on tente le repli */ }
+  }
+
+  /* Repli : une zone de texte hors ecran, selectionnee puis copiee.
+     Elle doit rester dans le document et visible au sens du layout,
+     sinon la selection est ignoree — d'ou l'opacite plutot que
+     display:none. */
+  const zone = document.createElement('textarea');
+  zone.value = texte;
+  zone.setAttribute('readonly', '');
+  zone.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;border:0;padding:0';
+  document.body.appendChild(zone);
+  try {
+    zone.select();
+    zone.setSelectionRange(0, texte.length);
+    return document.execCommand('copy');
+  } catch {
+    return false;
+  } finally {
+    document.body.removeChild(zone);
+  }
+}
+
+/* Copie + retour visuel sur le bouton. En cas d'echec total, on
+   selectionne le texte : l'utilisateur n'a plus qu'a faire Ctrl+C, ce
+   qui vaut mieux qu'un bouton muet. */
+async function copierDepuisBouton (bouton, texte, champ) {
+  const initial = bouton.textContent;
+  const ok = await copierTexte(texte);
+  bouton.textContent = ok ? '✅ Copie !' : '⚠️ Faites Ctrl+C';
+  if (!ok && champ) { champ.focus(); champ.select(); }
+  setTimeout(() => { bouton.textContent = initial; }, ok ? 1800 : 4000);
+  return ok;
+}
+
 function escapeHTML (str) {
   const d = document.createElement('div');
   d.textContent = str == null ? '' : String(str);
@@ -1194,7 +1253,9 @@ document.getElementById('btn-log-copy').addEventListener('click', () => {
     const ts = new Date(l.ts).toLocaleTimeString('fr-FR', { hour12: false });
     return '[' + ts + '] [' + l.src + '] [' + l.level + '] ' + l.msg;
   }).join('\n');
-  navigator.clipboard.writeText(text).then(() => clog.ok('Logs copies dans le presse-papier'));
+  copierTexte(text).then(ok => ok
+    ? clog.ok('Logs copies dans le presse-papier')
+    : clog.warn('Copie impossible — selectionnez le texte et faites Ctrl+C'));
 });
 
 document.getElementById('btn-log-download').addEventListener('click', () => {
@@ -1372,14 +1433,9 @@ document.getElementById('btn-generate').addEventListener('click', () => {
   wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 });
 
-document.getElementById('btn-cfg-copy').addEventListener('click', () => {
+document.getElementById('btn-cfg-copy').addEventListener('click', async (e) => {
   const ta = document.getElementById('cfg-output');
-  navigator.clipboard.writeText(ta.value).then(() => {
-    const btn = document.getElementById('btn-cfg-copy');
-    const prev = btn.textContent;
-    btn.textContent = '✅ Copie !';
-    setTimeout(() => { btn.textContent = prev; }, 1800);
-  });
+  await copierDepuisBouton(e.currentTarget, ta.value, ta);
 });
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -1558,8 +1614,37 @@ function handleQRImageFile (file) {
     const file = e.dataTransfer.files[0];
     if (file) handleQRImageFile(file);
   });
-  document.getElementById('btn-paste-image').addEventListener('click', async () => {
-    clog.info('Bouton coller clique — lecture du presse-papier…');
+  /* Lire une image DANS le presse-papier demande navigator.clipboard.read(),
+     qui n'est pas exposé aux pages web par Firefox — même en contexte
+     sécurisé — et pas du tout hors HTTPS/localhost. Le bouton ne pouvait
+     donc pas tenir sa promesse ici.
+     Le raccourci Ctrl+V, lui, marche partout : l'évènement `paste` porte
+     l'image dans `clipboardData`. Le bouton se contente donc de tenter
+     l'API quand elle existe, et sinon d'expliquer le geste à faire. */
+  const zonePaste  = document.getElementById('qr-drop-zone');
+  const boutonColl = document.getElementById('btn-paste-image');
+
+  function inviterAuRaccourci (motif) {
+    clog.info('Presse-papier non lisible (' + motif + ') — invite au raccourci Ctrl+V');
+    const initial = boutonColl.textContent;
+    boutonColl.textContent = '⌨️ Appuyez sur Ctrl+V';
+    if (zonePaste) {
+      zonePaste.classList.add('qr-drop--attente');
+      zonePaste.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    /* La cible du collage doit avoir le focus, sinon l'évènement part
+       ailleurs — dans un champ de saisie par exemple. */
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    setTimeout(() => {
+      boutonColl.textContent = initial;
+      if (zonePaste) zonePaste.classList.remove('qr-drop--attente');
+    }, 8000);
+  }
+
+  boutonColl.addEventListener('click', async () => {
+    if (!navigator.clipboard || !navigator.clipboard.read) {
+      return inviterAuRaccourci(window.isSecureContext ? 'non pris en charge' : 'contexte non sécurisé');
+    }
     try {
       const items = await navigator.clipboard.read();
       for (const item of items) {
@@ -1572,16 +1657,32 @@ function handleQRImageFile (file) {
       }
       clog.warn('Aucune image dans le presse-papier');
     } catch (e) {
-      clog.error('Clipboard API : ' + e.message);
+      /* Firefox refuse read() aux pages web : ce n'est pas une panne,
+         c'est le comportement attendu. On oriente vers le raccourci. */
+      inviterAuRaccourci(e.name || 'refus');
     }
   });
+
   document.addEventListener('paste', e => {
     const isImageTabActive = document.getElementById('sub-image')?.classList.contains('active');
     if (!isImageTabActive) return;
+    if (zonePaste) zonePaste.classList.remove('qr-drop--attente');
+
+    /* `items` couvre une image copiée depuis une visionneuse, `files` une
+       capture d'écran collée depuis l'explorateur. Les deux existent
+       selon la provenance : on regarde les deux. */
     const items = e.clipboardData?.items || [];
     for (const item of items) {
-      if (item.type.startsWith('image/')) { handleQRImageFile(item.getAsFile()); break; }
+      if (item.type.startsWith('image/')) {
+        handleQRImageFile(item.getAsFile());
+        return;
+      }
     }
+    const files = e.clipboardData?.files || [];
+    for (const file of files) {
+      if (file.type.startsWith('image/')) { handleQRImageFile(file); return; }
+    }
+    clog.warn('Rien d\'exploitable dans le collage — une image est attendue');
   });
 })();
 
