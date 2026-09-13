@@ -5,6 +5,24 @@ Toutes les évolutions notables de MMM-Pronotepy.
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Ce fichier est détecté par MMM-Remote-Control, qui l'expose dans son interface.
 
+## [1.1.1] — 2026-09-13
+
+### Corrigé
+
+- **Le second enfant d'un compte parent ne se mettait jamais à jour.**
+  Régression de la 1.1.0 : le plancher de 5 min des garde-fous était indexé par
+  compte. Deux instances d'un même compte parent démarrent à quelques
+  millisecondes d'écart — la première passait, la seconde était bloquée, et la
+  course se rejouait à l'identique au cycle suivant. Mesuré : 0 collecte sur 4
+  cycles pour le second enfant. Le plancher est désormais par enfant ; la
+  suspension, le recul après échec et le plafond quotidien restent par compte,
+  puisque c'est le compte que PRONOTE voit.
+- **La collecte suivant un scan de QR Code pouvait être bloquée jusqu'à 6 h.**
+  On rescanne parce que les collectes échouaient, donc avec un recul accumulé :
+  l'écran restait inchangé après l'action attendue de l'utilisateur. Un scan
+  remet à zéro le recul et les planchers du compte — mais pas le gel sur
+  suspension d'IP, qu'un nouveau jeton ne lève pas, ni le plafond quotidien.
+
 ## [1.1.0] — 2026-09-12
 
 ### Ajouté

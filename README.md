@@ -509,15 +509,31 @@ viennent d'ailleurs :
 ### Les garde-fous
 
 Ils s'appliquent à **toutes** les collectes — minuteur, démarrage,
-reconfiguration, scan de QR Code — et l'état est tenu **par compte**, puisque
-c'est le compte que PRONOTE voit.
+reconfiguration — mais pas à la même échelle, et la distinction compte.
 
-| Garde-fou | Défaut | Rôle |
-|---|---|---|
-| Plancher entre deux tentatives | 5 min | écrase les rafales de rechargement |
-| Recul après échec | 5 → 10 → 20 min… plafonné à 6 h | n'insiste pas face à un refus |
-| Gel sur suspension annoncée | 6 h | la seule erreur que réessayer aggrave |
-| Plafond quotidien par compte | 60 | filet de dernier recours |
+| Garde-fou | Défaut | Portée | Rôle |
+|---|---|---|---|
+| Plancher entre deux tentatives | 5 min | **par enfant** | écrase les rafales d'une même collecte |
+| Recul après échec | 5 → 10 → 20 min… plafonné à 6 h | par compte | n'insiste pas face à un refus |
+| Gel sur suspension annoncée | 6 h | par compte | la seule erreur que réessayer aggrave |
+| Plafond quotidien | 60 | par compte | filet de dernier recours |
+
+**Le plancher est par enfant, pas par compte.** Deux instances d'un même compte
+parent démarrent à quelques millisecondes d'écart : un plancher par compte
+laissait passer la première et bloquait la seconde — et la course se rejouant à
+l'identique à chaque cycle, le second enfant ne se mettait *jamais* à jour. Les
+trois autres règles restent par compte : c'est le compte que PRONOTE voit, et
+une sanction le concerne tout entier.
+
+Conséquence assumée : un rechargement de page coûte une authentification par
+enfant affiché. C'est borné par le nombre d'instances — deux ou trois — là où le
+défaut d'origine n'était borné par rien.
+
+**Un scan de QR Code remet le recul à zéro.** On rescanne précisément parce que
+les collectes échouaient : sans cela, la collecte suivant le scan serait bloquée
+jusqu'à six heures, et l'écran resterait inchangé après une action que vous
+venez de faire. Le gel sur suspension d'IP, lui, n'est pas levé — un nouveau
+jeton ne change rien à une sanction qui porte sur l'adresse.
 
 **L'état est persisté** dans `cache/rate-<compte>.json`. Ce n'est pas un détail :
 un compteur en mémoire serait remis à zéro à chaque redémarrage, c'est-à-dire

@@ -367,6 +367,14 @@ module.exports = NodeHelper.create({
       const concernees = [...this.instances].filter(
         ([, state]) => accounts.normalize(state.config && state.config.account) === compte);
 
+      /* Le scan est une action délibérée, et le jeton est neuf : les
+       * échecs accumulés portaient sur l'ancien. Sans cette remise à
+       * zéro, la collecte qui suit serait bloquée par le recul — on
+       * rescanne justement parce que ça échouait. La suspension d'IP,
+       * elle, n'est pas levée : un nouveau jeton n'y change rien. */
+      rateLimit.save(CACHE_DIR, compte,
+                     rateLimit.afterManualSetup(rateLimit.load(CACHE_DIR, compte)));
+
       for (const [id] of concernees) {
         this.sendSocketNotification('TOKEN_SAVED', { username: result.username, _instanceId: id });
       }
@@ -439,13 +447,19 @@ module.exports = NodeHelper.create({
      * redémarrage en boucle rejoue le démarrage toutes les minutes.
      * Voir lib/rate-limit.js. */
     const compteLimite = accounts.normalize((state.config || {}).account);
+    /* Le plancher se compte PAR ENFANT : deux instances d'un même compte
+     * parent démarrent à quelques millisecondes d'écart, et l'indexer sur
+     * le compte affamait la seconde — définitivement, puisque la course
+     * se rejoue identique à chaque cycle. */
+    const creneau      = accounts.offlineKey(compteLimite, (state.config || {}).childName);
     const budget       = rateLimit.load(CACHE_DIR, compteLimite);
-    const verdict      = rateLimit.evaluate(budget, (state.config || {}).rateLimit);
+    const verdict      = rateLimit.evaluate(budget, (state.config || {}).rateLimit,
+                                            undefined, creneau);
 
     if (!verdict.allowed) {
       /* Un blocage n'est pas une erreur à afficher : les données en place
        * restent valables. On trace, et on laisse l'écran tel quel. */
-      const cle = `${compteLimite}:${verdict.reason}`;
+      const cle = `${creneau}:${verdict.reason}`;
       if (state.lastBlock !== cle) {
         state.lastBlock = cle;
         const dire = verdict.reason === 'suspended' ? Log.warn : Log.info;
@@ -455,7 +469,8 @@ module.exports = NodeHelper.create({
     }
     state.lastBlock = null;
 
-    if (!rateLimit.save(CACHE_DIR, compteLimite, rateLimit.afterAttempt(budget))) {
+    if (!rateLimit.save(CACHE_DIR, compteLimite,
+                        rateLimit.afterAttempt(budget, undefined, creneau))) {
       /* Sans persistance, le garde-fou ne survit pas à un redémarrage —
        * c'est-à-dire au scénario contre lequel il existe. */
       Log.warn(`Compteur anti-suspension non persisté pour « ${compteLimite} » : `

@@ -298,3 +298,136 @@ test('chaque blocage porte un message exploitable', () => {
     assert.ok(v.retryAfterMs > 0, 'un blocage doit dire quand réessayer');
   }
 });
+
+/* ── Plusieurs enfants sur un même compte ────────────────────────── */
+
+test('le second enfant d\'un compte parent n\'est pas affamé', (t2) => {
+  /* Régression de la 1.1.0, constatée le 2026-09-13 : le plancher était
+   * indexé par COMPTE. Deux instances d'un même compte parent démarrent
+   * à quelques millisecondes d'écart — la première passait, la seconde
+   * était bloquée, et la course se rejouait à l'identique au cycle
+   * suivant. Le second enfant ne se mettait JAMAIS à jour : 0 collecte
+   * sur 4 cycles. */
+  const inst = [
+    { nom: 'alice', slot: 'college-Alice', compte: 'college' },
+    { nom: 'hugo',  slot: 'college-Hugo',  compte: 'college' }
+  ];
+  let etat = rl.emptyState();
+  const reussies = { alice: 0, hugo: 0 };
+
+  for (let cycle = 0; cycle < 4; cycle++) {
+    for (const [k, i] of inst.entries()) {
+      const t = a(8, 0) + cycle * 60 * MIN + k * 200;   // 200 ms d'écart
+      if (rl.evaluate(etat, null, t, i.slot).allowed) {
+        reussies[i.nom]++;
+        etat = rl.afterOutcome(rl.afterAttempt(etat, t, i.slot), t, { ok: true });
+      }
+    }
+  }
+  assert.deepStrictEqual(reussies, { alice: 4, hugo: 4 });
+});
+
+test('le plancher reste actif pour un même enfant', () => {
+  /* La correction ne doit pas rouvrir la porte aux rafales : c'est
+   * toujours une seule authentification par enfant et par fenêtre. */
+  let etat = rl.emptyState();
+  let ok = 0;
+  for (let i = 0; i < 20; i++) {
+    const t = a(8, 0) + i * 3000;
+    if (rl.evaluate(etat, null, t, 'college-Alice').allowed) {
+      ok++;
+      etat = rl.afterOutcome(rl.afterAttempt(etat, t, 'college-Alice'), t, { ok: true });
+    }
+  }
+  assert.strictEqual(ok, 1);
+});
+
+test('suspension, recul et plafond restent par compte', () => {
+  /* Ces trois-là concernent ce que PRONOTE voit. Les rendre fins par
+   * enfant multiplierait les tentatives pendant une sanction — l'inverse
+   * du but. */
+  const t = a(9, 0);
+  let etat = rl.afterAttempt(rl.emptyState(), t, 'college-Alice');
+  etat = rl.afterOutcome(etat, t, { ok: false, kind: 'ip_suspended' });
+
+  /* Un autre enfant du même compte doit être gelé lui aussi. */
+  assert.strictEqual(rl.evaluate(etat, null, a(10, 0), 'college-Hugo').reason, 'suspended');
+
+  /* Idem pour le recul après échec. */
+  let apres = rl.afterOutcome(rl.afterAttempt(rl.emptyState(), t, 'college-Alice'), t,
+                              { ok: false, kind: 'network' });
+  assert.strictEqual(rl.evaluate(apres, null, t + MIN, 'college-Hugo').reason, 'backoff');
+});
+
+test('le plafond quotidien compte toutes les instances du compte', () => {
+  /* Deux enfants consomment deux fois plus vite : c'est voulu, PRONOTE
+   * voit bien deux authentifications. */
+  let etat = rl.emptyState();
+  etat = rl.afterAttempt(etat, a(8, 0), 'college-Alice');
+  etat = rl.afterAttempt(etat, a(8, 0), 'college-Hugo');
+  assert.strictEqual(etat.attemptsToday, 2);
+});
+
+test('un état écrit par la 1.1.0 ne rouvre pas le plancher', (t2) => {
+  /* Migration : l'ancien format n'a pas de carte par enfant. Sans repli
+   * sur `lastAttempt`, la mise à jour laisserait passer une rafale au
+   * premier démarrage — précisément quand on n'en veut pas. */
+  const ancien = { lastAttempt: a(8, 0), consecutiveFailures: 0,
+                   suspendedUntil: 0, day: rl.dayKey(a(8, 0)), attemptsToday: 3 };
+
+  assert.strictEqual(rl.evaluate(ancien, null, a(8, 1), 'college-Alice').allowed, false);
+  assert.strictEqual(rl.evaluate(ancien, null, a(8, 6), 'college-Alice').allowed, true);
+});
+
+test('un créneau absent vaut « le compte seul »', () => {
+  /* Compte élève : il n'y a pas d'enfant à choisir. */
+  assert.strictEqual(rl.slotKey(null), '_');
+  assert.strictEqual(rl.slotKey(''), '_');
+  assert.strictEqual(rl.slotKey('  '), '_');
+  assert.strictEqual(rl.slotKey('lycee-Hugo'), 'lycee-Hugo');
+});
+
+test('la carte des enfants ne grossit pas indéfiniment', () => {
+  /* Un childName qui change à chaque démarrage ferait enfler le fichier
+   * d'état sans limite. */
+  let etat = rl.emptyState();
+  for (let i = 0; i < 100; i++) etat = rl.afterAttempt(etat, a(8, 0) + i, `enfant-${i}`);
+  assert.ok(Object.keys(etat.attempts).length <= 33,
+    `carte trop grande : ${Object.keys(etat.attempts).length}`);
+});
+
+/* ── Scan de QR Code ─────────────────────────────────────────────── */
+
+test('un scan de QR Code débloque la collecte qui suit', () => {
+  /* On rescanne PARCE QUE ça échouait : un recul est presque toujours
+   * accumulé. Sans remise à zéro, l'écran resterait inchangé jusqu'à
+   * six heures après une action que l'utilisateur vient de faire. */
+  let etat = rl.emptyState();
+  for (let i = 0; i < 5; i++) {
+    const t = a(9, 0) + i * 60 * MIN;
+    etat = rl.afterOutcome(rl.afterAttempt(etat, t, 'college-Alice'), t, { ok: false });
+  }
+  assert.strictEqual(rl.evaluate(etat, null, a(14, 1), 'college-Alice').allowed, false);
+
+  etat = rl.afterManualSetup(etat);
+  assert.strictEqual(rl.evaluate(etat, null, a(14, 1), 'college-Alice').allowed, true);
+  assert.strictEqual(rl.evaluate(etat, null, a(14, 1), 'college-Hugo').allowed, true);
+});
+
+test('un scan ne lève pas une suspension d\'IP', () => {
+  /* La sanction porte sur l'adresse, pas sur le compte : un nouveau
+   * jeton n'y change rien, et insister la prolonge. */
+  let etat = rl.afterOutcome(rl.emptyState(), a(9, 0), { ok: false, kind: 'ip_suspended' });
+  etat = rl.afterManualSetup(etat);
+
+  const v = rl.evaluate(etat, null, a(11, 0), 'college-Alice');
+  assert.strictEqual(v.allowed, false);
+  assert.strictEqual(v.reason, 'suspended');
+});
+
+test('un scan ne remet pas le compteur du jour à zéro', () => {
+  /* Sinon il suffirait de rescanner pour contourner le plafond. */
+  const etat = rl.afterManualSetup(
+    Object.assign(rl.emptyState(), { day: rl.dayKey(a(9, 0)), attemptsToday: 40 }));
+  assert.strictEqual(etat.attemptsToday, 40);
+});
