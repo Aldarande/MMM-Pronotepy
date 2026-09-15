@@ -113,16 +113,27 @@ function jsonBodyMiddleware(req, res, next) {
   }
 
   const MAX_BODY = 2 * 1024 * 1024; // 2 MB — protection DoS
-  let body = '';
-  req.on('data',  chunk => {
+  let body    = '';
+  let termine = false;               // une seule réponse, un seul next()
+
+  const finir = (fn) => { if (termine) return; termine = true; fn(); };
+
+  req.on('data', chunk => {
+    if (termine) return;
     body += chunk.toString();
-    if (body.length > MAX_BODY) { req.destroy(); res.status(413).end('Payload too large'); }
+    if (body.length > MAX_BODY) {
+      /* Répondre AVANT de couper. `req.destroy()` détruit la socket, donc
+       * la réponse écrite ensuite n'atteignait jamais le client : il ne
+       * voyait qu'une connexion réinitialisée, sans explication.
+       * `res.end()` ferme proprement, ce qui interrompt aussi la lecture. */
+      finir(() => res.status(413).json({ error: 'Corps de requête trop volumineux' }));
+    }
   });
-  req.on('end',   ()    => {
+  req.on('end',   () => finir(() => {
     try { req.body = JSON.parse(body); } catch { req.body = {}; }
     next();
-  });
-  req.on('error', ()    => { req.body = {}; next(); });
+  }));
+  req.on('error', () => finir(() => { req.body = {}; next(); }));
 }
 
 /* ======================================================================

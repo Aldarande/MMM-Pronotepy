@@ -250,6 +250,28 @@ class FakeClient(object):
 
 
 @pytest.fixture
+def horloge_figee(bridge, monkeypatch):
+    """Fige `datetime.now()` du pont à midi, jour courant.
+
+    Les tests qui placent des cours « il y a 2 h » et « dans 1 h » par
+    rapport à l'heure réelle basculent de jour quand la suite tourne près
+    de minuit : `maintenant + 1 h` atterrit le lendemain, le cours sort
+    de `timetableToday`, et le test échoue — une heure par jour, sans que
+    rien n'ait changé dans le code. Une suite qui échoue selon l'heure
+    qu'il est n'apprend plus rien à personne.
+    """
+    fixe = dt.datetime.combine(dt.date.today(), dt.time(12, 0, 0))
+
+    class _DateTimeFige(dt.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return fixe
+
+    monkeypatch.setattr(bridge.dt, "datetime", _DateTimeFige)
+    return fixe
+
+
+@pytest.fixture
 def aujourdhui():
     """Date du jour, seule référence temporelle des tests.
 

@@ -153,8 +153,12 @@ class TestCollectTimetable:
         assert data["todayStart"] == ""
         assert data["timetableNextDay"]["daysUntil"] is None
 
-    def test_show_only_future_masque_les_cours_termines(self, bridge, aujourdhui):
-        maintenant = dt.datetime.now()
+    def test_show_only_future_masque_les_cours_termines(self, bridge, aujourdhui,
+                                                         horloge_figee):
+        # Horloge figée à midi : sans cela, « maintenant + 1 h » bascule au
+        # lendemain quand la suite tourne après 23 h, le cours sort de
+        # timetableToday, et le test échoue une heure par jour.
+        maintenant = horloge_figee
         passe = Lesson(maintenant - dt.timedelta(hours=2),
                        maintenant - dt.timedelta(hours=1), subject="Passé")
         futur = Lesson(maintenant + dt.timedelta(hours=1),

@@ -16,7 +16,32 @@ Ce fichier est détecté par MMM-Remote-Control, qui l'expose dans son interface
   jamais l'élargir ; absents, les sous-blocs la suivent, donc rien ne change
   pour une configuration existante.
 
+### Sécurité
+
+- **La clé d'API pouvait être écrite en clair dans les journaux.** Les refus
+  d'accès journalisaient l'URL complète, et la clé y voyage en `?key=…` — seul
+  canal disponible quand on tape l'URL au navigateur. Ces traces partent à la
+  fois dans `console.warn`, donc le journal système, et dans le tampon exposé
+  par `/api/logs`. Le cas n'est pas théorique : un signet portant la bonne clé,
+  utilisé pendant la fenêtre de démarrage où la configuration n'est pas encore
+  parvenue au backend, est refusé par le repli loopback — et la clé correcte se
+  retrouvait recopiée. Les URL journalisées sont désormais expurgées.
+- **Les secrets du module n'étaient pas nécessaires au pont Python.**
+  `process.env` lui était transmis en bloc, clé d'API comprise, alors qu'il ne
+  s'en sert pas. Moindre privilège : `MMM_PRONOTEPY_API_KEY` et
+  `MMM_PRONOTEPY_ALLOW_UNAUTHENTICATED` sont retirés de son environnement.
+
 ### Corrigé
+
+- **Un corps de requête trop volumineux coupait la connexion au lieu de
+  répondre.** `req.destroy()` précédait l'écriture du 413 : la socket étant
+  détruite, la réponse n'atteignait jamais le client, qui ne voyait qu'une
+  connexion réinitialisée sans explication. La réponse part maintenant avant la
+  fermeture, et un verrou garantit une seule réponse et un seul `next()`.
+- **Un test échouait une heure par jour.** `test_show_only_future` plaçait des
+  cours à « maintenant ± 1 h » : après 23 h, le cours futur basculait au
+  lendemain et sortait de `timetableToday`. Horloge figée à midi — une suite qui
+  échoue selon l'heure qu'il est n'apprend plus rien.
 
 - **Le bouton « Copier » de la page de configuration ne faisait rien.**
   `navigator.clipboard` n'existe qu'en contexte sécurisé — HTTPS ou localhost —

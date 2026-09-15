@@ -19,7 +19,7 @@ const assert  = require('node:assert');
 const path    = require('node:path');
 const fs      = require('node:fs');
 
-const { runBridge } = require('../lib/bridge-runner');
+const { runBridge, bridgeEnv } = require('../lib/bridge-runner');
 
 const NODE    = process.execPath;
 const HELPERS = path.join(__dirname, 'helpers');
@@ -209,4 +209,39 @@ test('20 cycles en timeout ne laissent aucun processus derrière eux', async () 
   const zombies = pids.filter(pid => processusPresent(pid).zombie);
   assert.deepStrictEqual(zombies, [], 'aucun enfant ne doit rester à l\'état zombie');
   assert.deepStrictEqual(restants, [], 'aucun enfant ne doit survivre au timeout');
+});
+
+/* ── Moindre privilège pour le sous-processus ────────────────────── */
+
+test('les secrets du module ne sont pas transmis au pont Python', (t2) => {
+  /* Le pont n'a besoin ni de la clé d'API ni du réglage d'ouverture. Les
+   * lui transmettre l'exposait à une trace ou à un vidage mémoire pour
+   * rien — et `process.env` partait en bloc. */
+  const avant = {
+    key:   process.env.MMM_PRONOTEPY_API_KEY,
+    open:  process.env.MMM_PRONOTEPY_ALLOW_UNAUTHENTICATED,
+    py:    process.env.MMM_PRONOTEPY_PYTHON
+  };
+  t2.after(() => {
+    for (const [k, v] of [['MMM_PRONOTEPY_API_KEY', avant.key],
+                          ['MMM_PRONOTEPY_ALLOW_UNAUTHENTICATED', avant.open],
+                          ['MMM_PRONOTEPY_PYTHON', avant.py]]) {
+      if (v === undefined) delete process.env[k]; else process.env[k] = v;
+    }
+  });
+
+  process.env.MMM_PRONOTEPY_API_KEY = 'secret-a-ne-pas-transmettre';
+  process.env.MMM_PRONOTEPY_ALLOW_UNAUTHENTICATED = 'true';
+  process.env.MMM_PRONOTEPY_PYTHON = '/usr/bin/python3';
+
+  const env = bridgeEnv();
+  assert.strictEqual(env.MMM_PRONOTEPY_API_KEY, undefined);
+  assert.strictEqual(env.MMM_PRONOTEPY_ALLOW_UNAUTHENTICATED, undefined);
+
+  /* MMM_PRONOTEPY_PYTHON n'est pas un secret et reste utile. */
+  assert.strictEqual(env.MMM_PRONOTEPY_PYTHON, '/usr/bin/python3');
+  /* Le reste de l'environnement doit survivre : sans PATH, rien ne
+     démarre. */
+  assert.strictEqual(env.PATH, process.env.PATH);
+  assert.strictEqual(env.PYTHONIOENCODING, 'utf-8');
 });

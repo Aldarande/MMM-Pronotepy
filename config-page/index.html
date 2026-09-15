@@ -378,6 +378,12 @@
       animation: qr-pulse 1.2s ease-in-out infinite;
     }
     @keyframes qr-pulse { 50% { box-shadow: 0 0 0 8px rgba(76, 175, 80, 0); } }
+    .cfg-hint {
+      grid-column: 1 / -1;
+      font-size: .74rem; line-height: 1.5; color: var(--muted);
+      padding: 8px 10px; margin-top: 4px;
+      border-left: 2px solid var(--border); background: rgba(255,255,255,.02);
+    }
   </style>
 </head>
 <body>
@@ -640,10 +646,21 @@
           <div class="cfg-row cfg-row--sub"><span class="cfg-key">showOnlyFuture</span><span class="cfg-ctrl"><label class="sw"><input type="checkbox" id="cfg-tt-future"><span class="sw-track"></span></label></span><span class="cfg-def">false</span></div>
           <div class="cfg-row cfg-row--sub"><span class="cfg-key">displayTeacher</span><span class="cfg-ctrl"><label class="sw"><input type="checkbox" id="cfg-tt-teacher" checked><span class="sw-track"></span></label></span><span class="cfg-def">true</span></div>
           <div class="cfg-row cfg-row--sub"><span class="cfg-key">displayRoom</span><span class="cfg-ctrl"><label class="sw"><input type="checkbox" id="cfg-tt-room" checked><span class="sw-track"></span></label></span><span class="cfg-def">true</span></div>
+          <div class="cfg-row cfg-row--sub"><span class="cfg-key">today.showFrom</span><span class="cfg-ctrl"><input type="text" id="cfg-tt-today-from" placeholder="06:00" maxlength="5" style="max-width:80px"></span><span class="cfg-def">section</span></div>
+          <div class="cfg-row cfg-row--sub"><span class="cfg-key">today.showUntil</span><span class="cfg-ctrl"><input type="text" id="cfg-tt-today-until" placeholder="14:00" maxlength="5" style="max-width:80px"></span><span class="cfg-def">section</span></div>
 
           <!-- Sous-groupe : Prochain jour -->
           <div class="cfg-subhead">📆 Prochain jour</div>
           <div class="cfg-row cfg-row--sub"><span class="cfg-key">displayNextDay</span><span class="cfg-ctrl"><label class="sw"><input type="checkbox" id="cfg-tt-nextday" checked><span class="sw-track"></span></label></span><span class="cfg-def">true</span></div>
+          <div class="cfg-row cfg-row--sub"><span class="cfg-key">nextDay.showFrom</span><span class="cfg-ctrl"><input type="text" id="cfg-tt-next-from" placeholder="17:00" maxlength="5" style="max-width:80px"></span><span class="cfg-def">section</span></div>
+          <div class="cfg-row cfg-row--sub"><span class="cfg-key">nextDay.showUntil</span><span class="cfg-ctrl"><input type="text" id="cfg-tt-next-until" placeholder="23:59" maxlength="5" style="max-width:80px"></span><span class="cfg-def">section</span></div>
+
+          <div class="cfg-hint">
+            Laissez ces quatre champs vides pour que les deux blocs suivent la
+            plage de la section. Les renseigner permet d'afficher la journée en
+            cours le matin et celle du lendemain le soir. Un sous-bloc restreint
+            la plage de la section, il ne l'élargit pas.
+          </div>
 
         </div>
       </div>
@@ -1324,6 +1341,28 @@ async function loadChildrenIntoConfig () {
   } catch { /* ignore */ }
 }
 
+/* Lignes `today:` / `nextDay:` du bloc Timetable.
+ *
+ * On ne les émet QUE si l'utilisateur a renseigné au moins une heure :
+ * un sous-bloc vide n'a aucun effet, et l'écrire quand même encombrerait
+ * la configuration d'un réglage que personne n'a demandé. */
+function sousBlocsHoraires () {
+  const lignes = [];
+  for (const [cle, prefixe] of [['today', 'cfg-tt-today'], ['nextDay', 'cfg-tt-next']]) {
+    const de = strVal(prefixe + '-from', '').trim();
+    const a  = strVal(prefixe + '-until', '').trim();
+    if (!de && !a) continue;
+
+    const morceaux = [];
+    if (de) morceaux.push('showFrom: "' + de + '"');
+    if (a)  morceaux.push('showUntil: "' + a + '"');
+    lignes.push('      ' + cle + ': { ' + morceaux.join(', ') + ' }' + ',');
+  }
+  /* Pas de virgule sur la dernière ligne du bloc. */
+  if (lignes.length) lignes[lignes.length - 1] = lignes[lignes.length - 1].replace(/,$/, '');
+  return lignes;
+}
+
 function boolVal (id) {
   const el = document.getElementById(id);
   return el ? el.checked : false;
@@ -1375,7 +1414,9 @@ document.getElementById('btn-generate').addEventListener('click', () => {
     '      showOnlyFuture: ' + b('cfg-tt-future')   + ',',
     '      showHolidays:   ' + b('cfg-tt-holidays') + ',',
     '      showFrom:       "' + s('cfg-tt-from', '00:00') + '",',
-    '      showUntil:      "' + s('cfg-tt-until', '23:59') + '"',
+    '      showUntil:      "' + s('cfg-tt-until', '23:59') + '"'
+      + (sousBlocsHoraires().length ? ',' : ''),
+    ...sousBlocsHoraires(),
     '    },',
     '',
     '    Homeworks: {',

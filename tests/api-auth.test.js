@@ -24,7 +24,7 @@ const os     = require('node:os');
 
 const {
   createApiAuth, createFailureTracker, describeMode,
-  safeEqual, isLoopback, presentedSecret,
+  safeEqual, isLoopback, presentedSecret, safeUrlForLog,
   MIN_SECRET_LENGTH, MAX_FAILURES, LOCKOUT_MS
 } = require('../lib/api-auth');
 
@@ -448,4 +448,56 @@ test('sur une vraie socket, le LAN prend un 401 et le local passe', async (t) =>
   } finally {
     await new Promise(r => serveur.close(r));
   }
+});
+
+/* ── La clé ne doit jamais atteindre les journaux ────────────────── */
+
+test('la clé est expurgée des URL journalisées', () => {
+  /* Elle voyage en ?key=… — seul canal disponible quand on tape l'URL
+   * dans un navigateur. Or les refus journalisent l'URL, et ces traces
+   * partent dans console.warn (donc le journal système) ET dans le
+   * tampon exposé par /api/logs. */
+  assert.strictEqual(
+    safeUrlForLog('/MMM-Pronotepy/config?key=SECRET-REEL'),
+    '/MMM-Pronotepy/config?key=***');
+  assert.strictEqual(
+    safeUrlForLog('/x?a=1&key=SECRET&b=2'), '/x?a=1&key=***&b=2');
+  assert.strictEqual(
+    safeUrlForLog('/x?KEY=SECRET'), '/x?KEY=***');
+  assert.strictEqual(safeUrlForLog('/x?a=1'), '/x?a=1');
+  assert.strictEqual(safeUrlForLog(''), '');
+  assert.strictEqual(safeUrlForLog(null), '');
+});
+
+test('un refus ne recopie pas la clé dans les traces', () => {
+  /* Le cas concret : un signet portant la BONNE clé, utilisé pendant la
+   * fenêtre de démarrage où la configuration n'est pas encore parvenue
+   * au backend. Le repli loopback refuse — et recopiait la clé. */
+  const traces = [];
+  const mw = createApiAuth({
+    moduleName: 'MMM-Pronotepy',
+    getSecret: () => '',
+    log: { warn: (...a) => traces.push(a.join(' ')) }
+  });
+
+  const url = '/MMM-Pronotepy/config?key=MA-VRAIE-CLE-SECRETE';
+  jouer(mw, { ip: '192.168.1.50', url });
+
+  assert.strictEqual(traces.length, 1);
+  assert.ok(!traces[0].includes('MA-VRAIE-CLE-SECRETE'),
+    'la clé ne doit pas figurer dans la trace : ' + traces[0]);
+  assert.ok(traces[0].includes('key=***'));
+});
+
+test('une clé refusée n\'est pas journalisée non plus', () => {
+  /* Une faute de frappe est souvent à un caractère de la vraie clé. */
+  const traces = [];
+  const mw = createApiAuth({
+    moduleName: 'MMM-Pronotepy',
+    getSecret: () => SECRET,
+    log: { warn: (...a) => traces.push(a.join(' ')) }
+  });
+  jouer(mw, { ip: '192.168.1.50', url: '/MMM-Pronotepy/api/status?key=presque-la-bonne' });
+
+  assert.ok(!traces[0].includes('presque-la-bonne'));
 });
