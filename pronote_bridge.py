@@ -44,7 +44,11 @@ import sys
 import traceback
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CACHE_DIR = os.path.join(BASE_DIR, "cache")
+# Dossier CACHÉ, et le point n'est pas cosmétique : MagicMirror sert tout
+# « modules/ » en statique, et express.static ignore les fichiers cachés.
+# Un « cache/ » ordinaire rendait les jetons téléchargeables sur le réseau.
+# Node déplace l'ancien dossier au démarrage (lib/private-cache.js).
+CACHE_DIR = os.path.join(BASE_DIR, ".cache")
 # Fichier de l'époque « un seul compte ». Conservé en lecture seule : voir
 # load_tokens(). Node le renomme en tokens-default.json au démarrage.
 LEGACY_TOKEN_FILE = os.path.join(CACHE_DIR, "tokens.json")

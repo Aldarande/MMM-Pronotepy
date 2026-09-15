@@ -9,6 +9,19 @@ Ce fichier est détecté par MMM-Remote-Control, qui l'expose dans son interface
 
 ### Ajouté
 
+- **Contenu du QR Code validé avant la saisie du PIN.** Enseignement repris de
+  ProJote : un QR Code qui se décode n'est pas forcément celui de Pronote.
+  Scanner un QR Wi-Fi ou une URL ouvrait la fenêtre du PIN, puis échouait au
+  fond du pont avec un message incompréhensible. Les trois portes d'entrée —
+  image, caméra, JSON collé — partagent désormais un seul validateur, qui
+  vérifie la structure (`jeton`, `login`, `url`), le caractère hexadécimal des
+  deux premiers et la validité de l'URL.
+- **Décodage d'image à plusieurs échelles.** ProJote a mesuré qu'un
+  redimensionnement casse le décodage : un QR Code Pronote porte plusieurs
+  centaines d'octets, sa grille fait 89 modules de côté — moins de 2,3 px par
+  module à 200 px. Ce module décodait déjà en taille native, mais une seule
+  tentative échoue sur une photo très haute résolution ou une capture trop
+  petite. Six échelles sont essayées, toutes à ratio constant.
 - **Horaires d'affichage distincts pour l'emploi du temps du jour et celui du
   lendemain.** `Timetable.today` et `Timetable.nextDay` acceptent leurs propres
   `showFrom` / `showUntil` — ou `showRanges` — de quoi n'afficher qu'un emploi
@@ -17,6 +30,20 @@ Ce fichier est détecté par MMM-Remote-Control, qui l'expose dans son interface
   pour une configuration existante.
 
 ### Sécurité
+
+- **🔴 Les jetons Pronote étaient téléchargeables depuis le réseau local.**
+  MagicMirror sert tout `modules/` en statique ; le cache du module y vivait.
+  `GET /modules/MMM-Pronotepy/cache/tokens-default.json` renvoyait **200**, avec
+  l'URL Pronote, l'identifiant, les prénoms des enfants et les jetons de
+  reconnexion. L'authentification des routes n'y changeait rien : elle protège
+  `/MMM-Pronotepy/*`, les fichiers étaient servis depuis `/modules/…`. Et on ne
+  peut pas la rattraper par une route — les middlewares statiques sont
+  enregistrés avant que les helpers ne reçoivent `expressApp`.
+  Le cache passe donc dans un dossier **caché** (`.cache/`), qu'`express.static`
+  ignore. Il reste dans le dossier du module, donc dans le bind mount d'une
+  installation Docker. Le contenu existant est déplacé au démarrage, sans
+  rescan. **Si votre miroir a tourné sur un réseau partagé, rescannez un QR
+  Code : cela invalide les jetons qui ont pu fuiter.**
 
 - **La clé d'API pouvait être écrite en clair dans les journaux.** Les refus
   d'accès journalisaient l'URL complète, et la clé y voyage en `?key=…` — seul

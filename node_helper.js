@@ -39,9 +39,13 @@ const offlineCache                      = require('./lib/offline-cache');
 const quietHours                        = require('./lib/quiet-hours');
 const accounts                          = require('./lib/accounts');
 const rateLimit                         = require('./lib/rate-limit');
+const privateCache                      = require('./lib/private-cache');
 
 const MODULE_NAME = 'MMM-Pronotepy';
-const CACHE_DIR   = path.join(__dirname, 'cache');
+/* Dossier caché, et c'est essentiel : MagicMirror sert tout `modules/`
+ * en statique, donc un `cache/` ordinaire rendait les jetons
+ * téléchargeables sur le réseau. Voir lib/private-cache.js. */
+const CACHE_DIR   = privateCache.privateCacheDir(__dirname);
 const BRIDGE      = path.join(__dirname, 'pronote_bridge.py');
 const VENV_DIR    = path.join(__dirname, '.venv');
 
@@ -159,6 +163,24 @@ module.exports = NodeHelper.create({
      * s'exécuteraient en parallèle brûleraient le même jeton primaire. */
     this._bridgeLock = Promise.resolve();
     Log.info('Node helper started');
+
+    /* AVANT toute lecture : sortir les jetons de la portée du serveur web.
+     * Un « cache/ » ordinaire vivant sous modules/ était servi en statique
+     * par MagicMirror — jetons, identifiant et prénoms des enfants
+     * téléchargeables par quiconque atteint le port 8080. */
+    const prive = privateCache.ensurePrivateCache(__dirname);
+    if (prive.bilan.migrated) {
+      Log.warn(`Cache déplacé vers ${privateCache.PRIVATE_DIR}/ `
+             + `(${prive.bilan.moved.length} fichier(s)) : il était servi en statique `
+             + 'par MagicMirror, donc lisible depuis le réseau. '
+             + 'Rescanner un QR Code invaliderait les jetons qui ont pu fuiter.');
+    }
+    if (prive.bilan.reason === 'partial') {
+      Log.error(`Déplacement incomplet du cache : ${prive.bilan.restants.join(', ')} `
+              + `restent dans ${privateCache.LEGACY_DIR}/ et donc exposés.`);
+    } else if (prive.bilan.reason === 'failed') {
+      Log.error(`Cache non déplacé (${prive.bilan.error}) — les jetons restent exposés.`);
+    }
 
     /* Reprise du fichier « tokens.json » des versions à compte unique.
      * Une seule fois, avant toute lecture : sans quoi une installation

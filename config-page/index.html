@@ -1567,42 +1567,113 @@ document.getElementById('qr-json').addEventListener('input', function () {
   const statusEl = document.getElementById('paste-status');
   if (!raw) { statusEl.style.display = 'none'; window._scannedQR = null; return; }
   clog.info('JSON saisi — longueur : ' + raw.length + ' car.');
-  try {
-    const parsed = JSON.parse(raw);
-    if (!parsed.jeton) throw new Error('Champ "jeton" manquant');
-    if (!parsed.url)   throw new Error('Champ "url" manquant');
+  /* Même validateur que les chemins image et caméra : trois portes
+   * d'entrée, un seul contrôle — sinon elles divergent. */
+  const verdict = validerContenuQR(raw);
+  if (verdict.ok) {
     window._scannedQR = raw;
-    const urlHost = (() => { try { return new URL(parsed.url).hostname; } catch { return '(url invalide)'; } })();
-    clog.ok('JSON valide — domaine : ' + urlHost);
+    clog.ok('JSON valide — domaine : ' + verdict.hote);
     statusEl.style.display = 'block';
     statusEl.className     = 'status-box status-ok';
-    statusEl.textContent   = '✅ JSON valide — ' + parsed.url;
+    statusEl.textContent   = '✅ JSON valide — ' + verdict.url;
     openPinModal();
-  } catch (e) {
+  } else {
     window._scannedQR      = null;
-    clog.error('JSON invalide : ' + e.message);
+    clog.error('JSON refuse : ' + verdict.motif);
     statusEl.style.display = 'block';
     statusEl.className     = 'status-box status-err';
-    statusEl.textContent   = '❌ JSON invalide : ' + e.message;
+    statusEl.textContent   = '❌ ' + verdict.motif;
   }
 });
 
 /* ══════════════════════════════════════════════════════════════════════
+   VALIDATION DU CONTENU DU QR CODE
+
+   Enseignement repris du plugin Jeedom ProJote, même auteur : un QR Code
+   qui se décode n'est pas forcément un QR Code de connexion Pronote. Sans
+   contrôle, scanner un QR Code Wi-Fi ou une simple URL ouvrait la fenêtre
+   du PIN, puis échouait au fond du pont Python avec un message
+   incompréhensible. On tranche ici, au plus près de l'utilisateur, avec un
+   message qui dit ce qui ne va pas.
+   ══════════════════════════════════════════════════════════════════════ */
+function validerContenuQR (brut) {
+  if (!brut || typeof brut !== 'string') return { ok: false, motif: 'contenu vide' };
+
+  let parsed;
+  try {
+    parsed = JSON.parse(brut.trim());
+  } catch {
+    return { ok: false, motif: 'ce n\'est pas un QR Code de connexion Pronote '
+                             + '(contenu illisible, du JSON est attendu)' };
+  }
+  if (!parsed || typeof parsed !== 'object') {
+    return { ok: false, motif: 'structure inattendue' };
+  }
+  for (const champ of ['jeton', 'login', 'url']) {
+    if (!parsed[champ]) {
+      return { ok: false, motif: 'champ « ' + champ + ' » manquant — ce QR Code '
+                               + 'n\'est pas celui de la connexion Pronote' };
+    }
+  }
+  /* Pronote chiffre jeton et login, puis les encode en hexadécimal. Le
+   * vérifier ici évite d'envoyer au pont un contenu qui n'a aucune chance
+   * d'aboutir — et de faire porter le chapeau au code PIN. */
+  for (const champ of ['jeton', 'login']) {
+    if (!/^[0-9a-f]+$/i.test(String(parsed[champ]))) {
+      return { ok: false, motif: 'le champ « ' + champ + ' » n\'est pas hexadécimal' };
+    }
+  }
+  try {
+    return { ok: true, hote: new URL(parsed.url).hostname, url: parsed.url };
+  } catch {
+    return { ok: false, motif: 'l\'URL du QR Code est invalide' };
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
    IMAGE QR CODE
    ══════════════════════════════════════════════════════════════════════ */
+const ECHELLES_QR = [1, 0.5, 2, 0.75, 1.5, 3];
+const COTE_MAX_QR = 3000;        // au-delà, le canvas coûte plus qu'il ne rapporte
+
 function decodeQRFromImage (img) {
-  clog.info('Decodage image — taille : ' + img.naturalWidth + 'x' + img.naturalHeight + 'px');
+  const largeur = img.naturalWidth  || img.width;
+  const hauteur = img.naturalHeight || img.height;
+  clog.info('Decodage image — taille native : ' + largeur + 'x' + hauteur + 'px');
   if (typeof jsQR !== 'function') { clog.error('jsQR non charge !'); return null; }
+  if (!largeur || !hauteur)       { clog.error('Image sans dimensions'); return null; }
   const canvas = document.getElementById('qr-decode-canvas');
   const ctx    = canvas.getContext('2d');
-  canvas.width  = img.naturalWidth  || img.width;
-  canvas.height = img.naturalHeight || img.height;
-  ctx.drawImage(img, 0, 0);
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const code      = jsQR(imageData.data, imageData.width, imageData.height);
-  if (code) clog.ok('jsQR a trouve un QR code');
-  else      clog.warn('jsQR n\'a detecte aucun QR code dans l\'image');
-  return code?.data || null;
+
+  /* Plusieurs échelles, TOUTES à ratio constant.
+   *
+   * Enseignement de ProJote : redimensionner l'image casse le décodage.
+   * Un QR Code Pronote transporte plusieurs centaines d'octets, sa grille
+   * fait 89 modules de côté — moins de 2,3 px par module à 200 px, et
+   * jsQR échoue. Ce module décodait déjà en taille native, mais une seule
+   * tentative ne suffit pas toujours : une photo de téléphone en très
+   * haute résolution, ou une capture trop petite, échoue au 1:1 et passe
+   * à l'échelle voisine. Déformer l'image, en revanche, est exactement ce
+   * qu'il ne faut pas faire. */
+  for (const echelle of ECHELLES_QR) {
+    const l = Math.round(largeur * echelle);
+    const h = Math.round(hauteur * echelle);
+    if (l < 40 || h < 40) continue;                    // trop petit pour 89 modules
+    if (l > COTE_MAX_QR || h > COTE_MAX_QR) continue;
+
+    canvas.width  = l;
+    canvas.height = h;
+    ctx.drawImage(img, 0, 0, l, h);
+    const data = ctx.getImageData(0, 0, l, h);
+    const code = jsQR(data.data, data.width, data.height);
+    if (code?.data) {
+      clog.ok('jsQR a trouve un QR code (echelle x' + echelle + ' — ' + l + 'x' + h + ')');
+      return code.data;
+    }
+  }
+  clog.warn('jsQR n\'a detecte aucun QR code, a aucune des '
+          + ECHELLES_QR.length + ' echelles essayees');
+  return null;
 }
 
 function handleQRImageFile (file) {
@@ -1616,8 +1687,22 @@ function handleQRImageFile (file) {
   reader.onload = function (ev) {
     const img = new Image();
     img.onload = function () {
-      const result = decodeQRFromImage(img);
-      if (result) {
+      const result  = decodeQRFromImage(img);
+      const verdict = result ? validerContenuQR(result) : { ok: false, motif: null };
+
+      if (result && !verdict.ok) {
+        /* Un QR Code lisible mais qui n'est pas celui de Pronote : le dire
+         * ici plutôt que de laisser l'utilisateur saisir un PIN pour rien. */
+        clog.warn('QR Code decode mais refuse : ' + verdict.motif);
+        dropZone.classList.remove('decoded');
+        dropText.textContent   = 'Ce QR Code n\'est pas celui de Pronote';
+        statusEl.style.display = 'block';
+        statusEl.className     = 'status-box status-err';
+        statusEl.textContent   = '❌ ' + verdict.motif;
+        return;
+      }
+      if (verdict.ok) {
+        clog.ok('QR Code valide — domaine : ' + verdict.hote);
         window._scannedQR = result;
         dropZone.classList.add('decoded');
         dropText.textContent = 'QR Code decode avec succes !';
@@ -1752,6 +1837,15 @@ async function startCamera () {
       const img  = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const code = typeof jsQR === 'function' ? jsQR(img.data, img.width, img.height) : null;
       if (code?.data) {
+        const verdict = validerContenuQR(code.data);
+        if (!verdict.ok) {
+          /* On ne coupe PAS la caméra : l'utilisateur vient peut-être de
+           * cadrer le mauvais QR Code, il doit pouvoir viser le bon. */
+          scanStatus.textContent = '❌ ' + verdict.motif;
+          scanStatus.className   = 'status-box status-err';
+          return;
+        }
+        clog.ok('QR Code valide — domaine : ' + verdict.hote);
         window._scannedQR = code.data;
         scanStatus.textContent = '✅ QR Code detecte !';
         scanStatus.className   = 'status-box status-ok';

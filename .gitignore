@@ -1,6 +1,6 @@
 node_modules/
-cache/tokens.json
-cache/device_uuid.txt
+.cache/
+cache/
 GEMINI.md
 
 # Python
@@ -8,6 +8,3 @@ GEMINI.md
 __pycache__/
 *.pyc
 .pytest_cache/
-cache/last-*.json
-cache/tokens-*.json
-cache/rate-*.json
